@@ -12,8 +12,7 @@ to evaluate responses against various quality criteria.
 
 - Exposes RootSignals evaluators as MCP tools
 - Supports both standard evaluation and RAG evaluation with contexts
-- Implements multiple transport protocols (stdio, WebSocket, SSE)
-- Provides asynchronous execution for improved performance
+- Implements sse
 - Compatible with various MCP clients
 - Docker-ready for containerized deployment
 
@@ -33,96 +32,38 @@ The server exposes the following tools:
    cd rootsignals-mcp
    ```
 
-2. Create and activate a virtual environment:
-   ```
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
-
-3. Install dependencies using uv:
-   ```
-   uv pip install -e ".[dev]"
-   ```
-
-4. Set up the configuration:
+2. Set up the configuration:
    ```
    cp .env.example .env
    ```
    Then edit the `.env` file to add your RootSignals API key.
 
+3. `docker compose up` will start the server on `http://localhost:9090`
+
 ## Usage
 
-### Starting the server
 
-To start the server in stdio mode (default for command-line tools):
+1. From code, e.g. the Python client
+   ```python
+   from mcp.client.sse import sse_client
+   from mcp.client.session import ClientSession
 
-```
-python -m main
-```
+   # Connect to the /sse endpoint (the server endpoint for SSE connections)
+   async with sse_client("http://localhost:9090/sse") as transport:
+       read_stream, write_stream = transport
+       async with ClientSession(read_stream, write_stream) as session:
+           await session.initialize()
+           # Use session
+   ```
 
-### Connecting to the server
-
-The server supports multiple transport mechanisms:
-
-1. **stdio** - For local process communication
-2. **WebSocket** - For network/Docker deployments
-3. **Server-Sent Events (SSE)** - For HTTP-based communication
-
-See the reference documentation in `references/mcp-server-implementation.md` for detailed connection examples.
-
-### Docker
-
-Run the server using Docker:
-
-```
-docker build -t rootsignals-mcp .
-docker run -p 9090:9090 --env-file .env rootsignals-mcp
-```
-
-Or using docker-compose:
+2. From all other clients that support sse - add the server to your config
+```json
+{
+    "mcpServers": {
+        "root-signals": {
+            "url": "http://localhost:9090/sse"
+        }
+    }
+}
 
 ```
-docker-compose up
-```
-
-By default, the Docker container exposes port 9090 for WebSocket/SSE connections.
-
-## Development
-
-### Running tests
-
-Run all tests:
-
-```
-uv run python -m pytest
-```
-
-Run a specific test file:
-
-```
-uv run python -m pytest src/root_mcp_server/tests/test_mcp_server.py -v
-```
-
-Run a specific test:
-
-```
-uv run python -m pytest src/root_mcp_server/tests/test_mcp_server.py::test_handle_list_evaluators -v
-```
-
-### Code formatting and linting
-
-```
-uv run ruff format .
-uv run ruff check .
-uv run mypy .
-```
-
-## Documentation
-
-- See `references/mcp-server-implementation.md` for detailed implementation reference
-- See `references/rootsignals-sdk-async.md` for RootSignals SDK async usage patterns
-- See `specification.md` for the project requirements
-
-## License
-
-MIT License

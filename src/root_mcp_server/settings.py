@@ -28,11 +28,18 @@ class Settings(BaseSettings):
 
     # Server settings
     host: str = Field(default="0.0.0.0", description="Host to bind to", alias="HOST")
-    port: int = Field(default=9091, description="Port to listen on", alias="PORT")
+    port: int = Field(default=9090, description="Port to listen on", alias="PORT")
     log_level: Literal["debug", "info", "warning", "error", "critical"] = Field(
         default="info", description="Logging level", alias="LOG_LEVEL"
     )
     debug: bool = Field(default=False, description="Enable debug mode", alias="DEBUG")
+
+    # Transport settings
+    transport: Literal["stdio", "sse", "websocket"] = Field(
+        default="stdio",
+        description="Transport mechanism to use (stdio, sse, websocket)",
+        alias="TRANSPORT",
+    )
 
     env: str = Field(
         default="development",

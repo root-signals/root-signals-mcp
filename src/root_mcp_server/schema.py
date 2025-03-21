@@ -3,7 +3,8 @@
 This module defines Pydantic models and other types used across the server.
 """
 
-from typing import Any, TypeVar
+from datetime import datetime
+from typing import TypeVar
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -12,16 +13,23 @@ V = TypeVar("V")
 
 
 class EvaluationRequest(BaseModel):
-    """Model for evaluation request parameters."""
+    """
+    Model for evaluation request parameters.
 
-    query: str = Field(..., description="The user query to evaluate")
+    this is based on the EvaluatorExecutionRequest model from the RootSignals API
+    but the optional fields require domain knowledge, so we'll reduce the ones we need and
+    be strict about it instead.
+    """
+
+    evaluator_id: str = Field(..., description="The ID of the evaluator to use")
+    request: str = Field(..., description="The user query to evaluate")
     response: str = Field(..., description="The AI assistant's response to evaluate")
 
-    @field_validator("query")
+    @field_validator("request")
     @classmethod
-    def validate_query_not_empty(cls, v: str) -> str:
+    def validate_request_not_empty(cls, v: str) -> str:
         if not v.strip():
-            raise ValueError("Query cannot be empty")
+            raise ValueError("Request cannot be empty")
         return v
 
     @field_validator("response")
@@ -31,38 +39,49 @@ class EvaluationRequest(BaseModel):
             raise ValueError("Response cannot be empty")
         return v
 
-
 class RAGEvaluationRequest(EvaluationRequest):
-    """Model for faithfulness evaluation request parameters."""
+    """
+    Model for faithfulness evaluation request parameters."""
 
     contexts: list[str] | None = Field(
         default=None, description="List of required context strings for evaluation"
     )
 
-
 class EvaluationResponse(BaseModel):
-    """Model for evaluation response."""
+    """
+    Model for evaluation response.
 
+    Trimmed down version of
+    root.generated.openapi_aclient.models.evaluator_execution_result.EvaluatorExecutionResult
+    """
+
+    evaluator_name: str = Field(..., description="Name of the evaluator")
     score: float = Field(..., description="Evaluation score (0-1)")
-    explanation: str | None = Field(None, description="Explanation of the evaluation")
     justification: str | None = Field(None, description="Justification for the score")
-    analysis: str | None = Field(None, description="Detailed analysis of the response")
-    rating: str | None = Field(None, description="Qualitative rating of the response")
-    feedback: str | None = Field(None, description="Feedback on the response")
-    details: dict[str, Any] | None = Field(None, description="Additional details")
-    reasoning: str | None = Field(None, description="Reasoning behind the evaluation")
+    execution_log_id: str | None = Field(None, description="Execution log ID for use in monitoring")
+    cost: float | int | None = Field(None, description="Cost of the evaluation")
+
+
+
 
 
 class EvaluatorInfo(BaseModel):
-    """Model for evaluator information."""
+    """
+    Model for evaluator information.
+
+    Trimmed down version of root.generated.openapi_aclient.models.evaluator.Evaluator
+    """
 
     name: str = Field(..., description="Name of the evaluator")
     id: str = Field(..., description="ID of the evaluator")
     version_id: str = Field(..., description="Version ID of the evaluator")
-    models: list[str] = Field(..., description="List of models supported by the evaluator")
+    updated_at: str = Field(..., description="Last updated timestamp of the evaluator")
     intent: str | None = Field(None, description="Intent of the evaluator")
-    requires_context: bool | None = Field(
+    requires_contexts: bool | None = Field(
         False, description="Whether the evaluator requires context"
+    )
+    requires_expected_output: bool | None = Field(
+        False, description="Whether the evaluator requires gold standard output"
     )
 
 

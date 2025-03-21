@@ -18,9 +18,9 @@ COPY ./src ./src
 # Server port
 EXPOSE 9090
 
-# Health check using SSE endpoint
+# Health check using health endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f -I http://localhost:9090/sse || exit 1
+    CMD curl -f -I http://localhost:9090/health || exit 1
 
-# Run the server
-CMD ["uv", "run", "python", "-m", "src.root_mcp_server.server"]
+# Run the SSE server directly
+CMD ["uv", "run", "python", "-m", "src.root_mcp_server.sse_server"]

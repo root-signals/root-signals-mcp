@@ -4,9 +4,13 @@ This module handles the integration with RootSignals evaluators.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from root import RootSignals
+from root.generated.openapi_aclient.models.evaluator import Evaluator
+from root.generated.openapi_aclient.models.evaluator_execution_result import (
+    EvaluatorExecutionResult,
+)
 
 from root_mcp_server.schema import (
     EvaluationRequest,
@@ -25,10 +29,18 @@ class EvaluatorService:
 
     def __init__(self) -> None:
         """Initialize the evaluator service."""
-        self.client = RootSignals(
+        # Create both async and sync clients - we need both because some methods
+        # only work in sync mode while we want to use async methods where possible
+        self.async_client = RootSignals(
             api_key=settings.root_signals_api_key.get_secret_value(),
             run_async=True,
         )
+
+        self.sync_client = RootSignals(
+            api_key=settings.root_signals_api_key.get_secret_value(),
+            run_async=False,
+        )
+
         self.evaluators_cache: dict[str, Any] | None = None
 
     async def initialize(self) -> dict[str, Any]:
@@ -36,46 +48,62 @@ class EvaluatorService:
 
         Returns:
             Dict[str, Any]: The evaluators data from RootSignals API.
+
+        Raises:
+            RuntimeError: If evaluators cannot be retrieved from the API.
         """
-        # For tests, we'll use a mock implementation to avoid API calls
+        logger.info("Fetching evaluators from RootSignals API...")
+
         try:
-            # Mock data for testing purposes
-            mock_evaluators = {
-                "evaluators": [
-                    {
-                        "id": "test-evaluator-1",
-                        "name": "Test Evaluator 1",
-                        "version_id": "v1",
-                        "models": ["gpt-4"],
-                        "intent": "test",
-                        "requires_context": False,
-                    },
-                    {
-                        "id": "test-evaluator-2",
-                        "name": "Test Evaluator 2",
-                        "version_id": "v1",
-                        "models": ["gpt-4"],
-                        "intent": "rag",
-                        "requires_context": True,
-                    },
-                ],
-                "total": 2,
+            # The client.evaluators.list() method seems synchronous even when run_async=True
+            # We'll run it in a separate thread to avoid blocking the event loop
+            import asyncio
+            from concurrent.futures import ThreadPoolExecutor
+
+            def get_evaluators() -> list[Evaluator]:
+                try:
+                    return self.sync_client.evaluators.list()
+                except Exception as e:
+                    raise RuntimeError(f"Error getting evaluators in thread: {e}") from e
+
+            with ThreadPoolExecutor() as executor:
+                evaluators_list = await asyncio.get_event_loop().run_in_executor(
+                    executor, get_evaluators
+                )
+
+            # Trim down upstream response for better use with llms
+            evaluators_data = [
+                EvaluatorInfo(
+                    id=evaluator.id,
+                    name=evaluator.name,
+                    version_id=evaluator.version_id,
+                    updated_at=evaluator.updated_at.isoformat() if evaluator.updated_at else "1970-01-01T00:00:00Z",
+                    intent=getattr(evaluator.objective, "intent", None)
+                    if hasattr(evaluator, "objective")
+                    else None,
+                    requires_contexts=getattr(
+                        evaluator, "evaluator_require_reference_variables", False
+                    ),
+                    requires_expected_output=getattr(
+                        evaluator, "evaluator_require_expected_output", False
+                    ),
+                )
+                for evaluator in evaluators_list
+            ]
+
+            total = len(evaluators_data)
+            logger.info(f"Retrieved {total} evaluators from RootSignals API")
+
+            self.evaluators_cache = {
+                "evaluators": evaluators_data,
+                "total": total,
             }
-            
-            self.evaluators_cache = mock_evaluators
+
             return self.evaluators_cache
 
-            # In production, we would use:
-            # context = self.client.get_client_context()
-            # async with context() as api_client:
-            #     api_instance = self.client.generated.openapi_aclient.api.v1_api.V1Api(api_client)
-            #     self.evaluators_cache = await api_instance.v1_evaluators_list()
-            #     return self.evaluators_cache
         except Exception as e:
-            logger.error(f"Error initializing evaluators: {e}", exc_info=settings.debug)
-            # If the above fails, create a minimal empty structure
-            self.evaluators_cache = {"evaluators": [], "total": 0}
-            return self.evaluators_cache
+            logger.error(f"Failed to fetch evaluators from API: {e}", exc_info=settings.debug)
+            raise RuntimeError(f"Cannot initialize evaluator service: {str(e)}") from e
 
     async def list_evaluators(self) -> EvaluatorsListResponse:
         """List all available evaluators.
@@ -86,51 +114,36 @@ class EvaluatorService:
         if not self.evaluators_cache:
             await self.initialize()
 
-        assert self.evaluators_cache is not None
-
-        evaluator_list: list[EvaluatorInfo] = []
-        for evaluator in self.evaluators_cache.get("evaluators", []):
-            evaluator_list.append(
-                EvaluatorInfo(
-                    name=evaluator.get("name", "Unknown"),
-                    id=evaluator.get("id", ""),
-                    version_id=evaluator.get("version_id", ""),
-                    models=evaluator.get("models", []),
-                    intent=evaluator.get("intent"),
-                    requires_context=evaluator.get("requires_context", False),
-                )
-            )
-
         return EvaluatorsListResponse(
-            evaluators=evaluator_list,
-            count=len(evaluator_list),
-            total=self.evaluators_cache.get("total", len(evaluator_list)),
+            evaluators=self.evaluators_cache["evaluators"],
+            count=len(self.evaluators_cache["evaluators"]),
+            total=self.evaluators_cache["total"],
         )
 
-    async def get_evaluator_by_id(self, evaluator_id: str) -> dict[str, Any] | None:
+    async def get_evaluator_by_id(self, evaluator_id: str) -> EvaluatorInfo | None:
         """Get evaluator details by ID.
 
         Args:
             evaluator_id: The ID of the evaluator to retrieve.
 
         Returns:
-            Optional[Dict[str, Any]]: The evaluator details or None if not found.
+            Optional[EvaluatorInfo]: The evaluator details or None if not found.
         """
         if not self.evaluators_cache:
             await self.initialize()
 
-        assert self.evaluators_cache is not None
-
-        for evaluator in self.evaluators_cache.get("evaluators", []):
-            if evaluator.get("id") == evaluator_id:
+        for evaluator in self.evaluators_cache["evaluators"]:
+            if evaluator.id == evaluator_id:
                 return evaluator
 
         return None
 
     async def run_evaluation(
-        self, evaluator_id: str, request: EvaluationRequest
+        self, request: EvaluationRequest
     ) -> EvaluationResponse:
-        """Run a standard evaluation.
+        """Run a standard evaluation asynchronously.
+
+        This method is used by the SSE server which requires async operation.
 
         Args:
             evaluator_id: The ID of the evaluator to use.
@@ -139,27 +152,26 @@ class EvaluatorService:
         Returns:
             EvaluationResponse: The evaluation results.
         """
-        # Mock implementation for tests
-        # In production, we would use the proper SDK call:
-        # result = await self.client.evaluators.arun(
-        #     evaluator_id=evaluator_id,
-        #     request=request.query,  # Note: API expects 'request', but our schema uses 'query'
-        #     response=request.response,
-        # )
-        
-        # Mock result for testing
-        result = {
-            "score": 0.85,
-            "justification": "Test justification",
-            "explanation": "Test explanation",
-        }
-        
-        return self._format_evaluation_result(result)
+        try:
+            evaluators_api = self.async_client.evaluators
+
+            result: EvaluatorExecutionResult = await evaluators_api.arun(
+                evaluator_id=request.evaluator_id,
+                request=request.request,
+                response=request.response,
+            )
+
+            return EvaluationResponse(**result.model_dump(exclude_none=True))
+        except Exception as e:
+            logger.error(f"Error running evaluation: {e}", exc_info=settings.debug)
+            raise RuntimeError(f"Failed to run evaluation: {str(e)}") from e
 
     async def run_rag_evaluation(
-        self, evaluator_id: str, request: RAGEvaluationRequest
+        self, request: RAGEvaluationRequest
     ) -> EvaluationResponse:
-        """Run a RAG evaluation with contexts.
+        """Run a RAG evaluation with contexts asynchronously.
+
+        This method is used by the SSE server which requires async operation.
 
         Args:
             evaluator_id: The ID of the evaluator to use.
@@ -168,50 +180,17 @@ class EvaluatorService:
         Returns:
             EvaluationResponse: The evaluation results.
         """
-        # Mock implementation for tests
-        # In production, we would use the proper SDK call:
-        # result = await self.client.evaluators.arun(
-        #     evaluator_id=evaluator_id,
-        #     request=request.query,  # Note: API expects 'request', but our schema uses 'query'
-        #     response=request.response,
-        #     contexts=request.contexts,
-        # )
-        
-        # Mock result for testing
-        result = {
-            "score": 0.85,
-            "justification": "Test justification",
-            "explanation": "Test explanation",
-        }
-        
-        return self._format_evaluation_result(result)
+        try:
+            evaluators_api = self.async_client.evaluators
+            logger.debug(f"Running RAG evaluation with contexts: {request.contexts}")
+            result: EvaluatorExecutionResult = await evaluators_api.arun(
+                evaluator_id=request.evaluator_id,
+                request=request.request,
+                response=request.response,
+                contexts=request.contexts,
+            )
 
-    def _format_evaluation_result(self, result: dict[str, Any]) -> EvaluationResponse:
-        """Format the raw API result into an EvaluationResponse.
-
-        Args:
-            result: The raw evaluation result from the API.
-
-        Returns:
-            EvaluationResponse: A formatted evaluation response.
-        """
-        # Convert score to float (API may return it as a string)
-        score = result.get("score")
-        if isinstance(score, str):
-            try:
-                score = float(score)
-            except (ValueError, TypeError):
-                score = 0.0
-        elif score is None:
-            score = 0.0
-
-        return EvaluationResponse(
-            score=score,
-            explanation=result.get("explanation"),
-            justification=result.get("justification"),
-            analysis=result.get("analysis"),
-            rating=result.get("rating"),
-            feedback=result.get("feedback"),
-            details=result.get("details"),
-            reasoning=result.get("reasoning"),
-        )
+            return EvaluationResponse(**result.model_dump(exclude_none=True))
+        except Exception as e:
+            logger.error(f"Error running RAG evaluation: {e}", exc_info=settings.debug)
+            raise RuntimeError(f"Failed to run RAG evaluation: {str(e)}") from e

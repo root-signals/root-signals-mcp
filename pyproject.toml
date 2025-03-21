@@ -26,7 +26,7 @@ dependencies = [
     "httpx-sse>=0.4.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
-    "httpx",
+    "httpx>=0.25.0",
     "anyio>=3.7.0",
     "starlette>=0.28.0",
     "websockets>=15.0.1",
@@ -36,26 +36,21 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.20.0",
-    "black>=23.0.0",
     "mypy>=1.0.0",
     "ruff>=0.0.244",
     "isort>=5.12.0",
     "freezegun>=1.5.1",
+    "pytest-cov>=6.0.0",
 ]
 
 [project.scripts]
-root-mcp-server = "root_mcp_server.unified_server:main"
+root-mcp-server = "root_mcp_server.sse_server:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.black]
-line-length = 100
-target-version = ["py313"]
-include = '\.pyi?$'
 
 [tool.mypy]
 python_version = "3.13"
