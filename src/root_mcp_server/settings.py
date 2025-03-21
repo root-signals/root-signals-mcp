@@ -3,6 +3,7 @@
 This module provides a settings model for the unified server using pydantic-settings.
 """
 
+import sys
 from typing import Literal
 
 from pydantic import Field, SecretStr
@@ -14,6 +15,9 @@ class Settings(BaseSettings):
 
     This class handles loading and validating configuration from environment variables.
     """
+
+    # Version
+    version: str = Field(default="0.1.0", description="Server version")
 
     # RootSignals API key
     root_signals_api_key: SecretStr = Field(
@@ -47,10 +51,9 @@ class Settings(BaseSettings):
 
 # Create a global settings instance
 try:
-    settings = Settings()  # Will use env_file from model_config
+    # Load settings from environment or .env file
+    settings = Settings()
 except Exception as e:
-    import sys
-
     sys.stderr.write(f"Error loading settings: {str(e)}\n")
     sys.stderr.write("Check that your .env file exists with proper ROOT_SIGNALS_API_KEY\n")
     raise

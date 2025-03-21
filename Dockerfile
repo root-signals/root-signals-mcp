@@ -14,7 +14,6 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
 
 COPY pyproject.toml uv.lock README.md ./
 COPY ./src ./src
-RUN uv sync
 
 # Server port
 EXPOSE 9090
@@ -24,4 +23,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f -I http://localhost:9090/sse || exit 1
 
 # Run the server
-CMD ["uv", "run", "python", "-m", "root_mcp_server.server"]
+CMD ["uv", "run", "python", "-m", "src.root_mcp_server.server"]

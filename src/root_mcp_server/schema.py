@@ -3,12 +3,9 @@
 This module defines Pydantic models and other types used across the server.
 """
 
-import time
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
-
-from settings import settings
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -75,4 +72,3 @@ class EvaluatorsListResponse(BaseModel):
     evaluators: list[EvaluatorInfo] = Field(..., description="List of evaluators")
     count: int = Field(..., description="Number of evaluators returned")
     total: int = Field(..., description="Total number of evaluators available")
-

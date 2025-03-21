@@ -13,21 +13,23 @@ authors = [
 requires-python = ">=3.13"
 license = {text = "MIT"}
 classifiers = [
-
     "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "root-signals==1.5.1",
+    "root-signals==1.5.2",
     "mcp-python>=0.1.4",
-    "mcp>=1.4.1",
+    "mcp[cli]>=1.4.1",
     "uvicorn>=0.18.0",
     "sse-starlette>=2.2.1",
     "httpx-sse>=0.4.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
     "httpx",
+    "anyio>=3.7.0",
+    "starlette>=0.28.0",
+    "websockets>=15.0.1",
 ]
 
 [project.optional-dependencies]
@@ -72,4 +74,3 @@ ignore = []
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["N", "B"]
-
