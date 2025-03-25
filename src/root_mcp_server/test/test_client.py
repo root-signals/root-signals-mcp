@@ -9,8 +9,8 @@ from root_mcp_server.client import RootSignalsMCPClient
 
 pytestmark = [
     pytest.mark.skipif(
-        os.environ.get("ROOT_SIGNALS_API_KEY") is None,
-        reason="ROOT_SIGNALS_API_KEY environment variable not set",
+        os.environ.get("ROOT_SIGNALS_API_KEY", "") == "",
+        reason="ROOT_SIGNALS_API_KEY environment variable not set or empty",
     ),
     pytest.mark.integration,
     pytest.mark.asyncio(loop_scope="session"),
