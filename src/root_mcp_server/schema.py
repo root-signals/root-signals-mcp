@@ -43,8 +43,8 @@ class RAGEvaluationRequest(EvaluationRequest):
     """
     Model for faithfulness evaluation request parameters."""
 
-    contexts: list[str] | None = Field(
-        default=None, description="List of required context strings for evaluation"
+    contexts: list[str] = Field(
+        default=[], description="List of required context strings for evaluation"
     )
 
 class EvaluationResponse(BaseModel):

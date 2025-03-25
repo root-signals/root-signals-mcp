@@ -154,7 +154,7 @@ class SSEMCPServer:
                 return {"error": "This evaluator requires context, but none was provided"}
 
             response: EvaluationResponse = await self.evaluator_service.run_rag_evaluation(
-                request.model_dump(exclude_none=True)
+                request
             )
             return response.model_dump(exclude_none=True)
 
