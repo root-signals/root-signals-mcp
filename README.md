@@ -24,39 +24,29 @@ The server exposes the following tools:
 2. `run_evaluation` - Runs a standard evaluation using a specified evaluator
 3. `run_rag_evaluation` - Runs a RAG evaluation with contexts using a specified evaluator
 
-## Installation
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/rootsignals/rootsignals-mcp.git
-   cd rootsignals-mcp
-   ```
-
-2. Set up the configuration:
-   ```
-   cp .env.example .env
-   ```
-   Then edit the `.env` file to add your RootSignals API key.
-
-3. `docker compose up` will start the server on `http://localhost:9090`
-
 ## Usage
 
+Start the docker container  
 
-1. From code, e.g. the Python client
-   ```python
-   from mcp.client.sse import sse_client
-   from mcp.client.session import ClientSession
+```bash
+docker run -e ROOT_SIGNALS_API_KEY=<your_key> -p 0.0.0.0:9090:9090 -name=rs-mcp -d ghcr.io/root-signals/root-signals-mcp:latest
+```
 
-   # Connect to the /sse endpoint (the server endpoint for SSE connections)
-   async with sse_client("http://localhost:9090/sse") as transport:
-       read_stream, write_stream = transport
-       async with ClientSession(read_stream, write_stream) as session:
-           await session.initialize()
-           # Use session
-   ```
+You should see some logs
+```bash
+docker logs rs-mcp
+2025-03-25 12:03:24,167 - root_mcp_server.sse - INFO - Starting RootSignals MCP Server v0.1.0
+2025-03-25 12:03:24,167 - root_mcp_server.sse - INFO - Environment: development
+2025-03-25 12:03:24,167 - root_mcp_server.sse - INFO - Transport: stdio
+2025-03-25 12:03:24,167 - root_mcp_server.sse - INFO - Host: 0.0.0.0, Port: 9090
+2025-03-25 12:03:24,168 - root_mcp_server.sse - INFO - Initializing MCP server...
+2025-03-25 12:03:24,168 - root_mcp_server - INFO - Fetching evaluators from RootSignals API...
+2025-03-25 12:03:25,627 - root_mcp_server - INFO - Retrieved 100 evaluators from RootSignals API
+2025-03-25 12:03:25,627 - root_mcp_server.sse - INFO - MCP server initialized successfully
+2025-03-25 12:03:25,628 - root_mcp_server.sse - INFO - SSE server listening on http://0.0.0.0:9090/sse
+```
 
-2. From all other clients that support sse - add the server to your config
+From all other clients that support sse transport - add the server to your config
 ```json
 {
     "mcpServers": {
@@ -65,5 +55,8 @@ The server exposes the following tools:
         }
     }
 }
-
 ```
+
+## How to contribute
+
+Contributions are welcome

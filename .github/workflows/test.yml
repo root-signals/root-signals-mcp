@@ -47,8 +47,12 @@ jobs:
           sleep 10
           docker compose ps
 
-      - name: Run integration tests
-        run: uv run python -m pytest src/root_mcp_server/tests/test_sse_integration.py -v
+      - name: Run integration tests with coverage
+        run: |
+          uv run python -m pytest src/root_mcp_server/tests/test_sse_integration.py -v \
+            --cov=src/root_mcp_server \
+            --cov-report=xml:integration-coverage.xml \
+            --cov-report=term
 
       - name: Collect docker logs on failure
         if: failure()
@@ -64,6 +68,16 @@ jobs:
           path: ./logs
           retention-days: 5
           
+      - name: Upload coverage to Codecov
+        if: success()
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./integration-coverage.xml
+          flags: integration
+          name: rootsignals-mcp-integration-codecov
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Stop containers
         if: always()
         run: docker compose down
