@@ -29,7 +29,7 @@ The server exposes the following tools:
 Start the docker container  
 
 ```bash
-docker run -e ROOT_SIGNALS_API_KEY=<your_key> -p 0.0.0.0:9090:9090 -name=rs-mcp -d ghcr.io/root-signals/root-signals-mcp:latest
+docker run -e ROOT_SIGNALS_API_KEY=<your_key> -p 0.0.0.0:9090:9090 --name=rs-mcp -d ghcr.io/root-signals/root-signals-mcp:latest
 ```
 
 You should see some logs
