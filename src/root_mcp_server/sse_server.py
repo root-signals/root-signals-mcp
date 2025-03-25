@@ -168,7 +168,7 @@ class SSEMCPServer:
 
 def create_app(server: SSEMCPServer) -> Starlette:
     """Create a Starlette app with SSE routes."""
-    sse_transport = SseServerTransport("/sse/message")
+    sse_transport = SseServerTransport("/sse/message/")
 
     async def handle_sse(request: Request) -> Any:
         """Handle SSE connections."""
@@ -186,7 +186,7 @@ def create_app(server: SSEMCPServer) -> Starlette:
 
     routes = [
         Route("/sse", endpoint=handle_sse),
-        Mount("/sse/message", app=sse_transport.handle_post_message),
+        Mount("/sse/message/", app=sse_transport.handle_post_message),
         Route("/health", endpoint=lambda r: Response("OK", status_code=200)),
     ]
 
