@@ -3,7 +3,6 @@
 This module defines Pydantic models and other types used across the server.
 """
 
-from datetime import datetime
 from typing import TypeVar
 
 from pydantic import BaseModel, Field, field_validator
@@ -39,6 +38,7 @@ class EvaluationRequest(BaseModel):
             raise ValueError("Response cannot be empty")
         return v
 
+
 class RAGEvaluationRequest(EvaluationRequest):
     """
     Model for faithfulness evaluation request parameters."""
@@ -46,6 +46,7 @@ class RAGEvaluationRequest(EvaluationRequest):
     contexts: list[str] = Field(
         default=[], description="List of required context strings for evaluation"
     )
+
 
 class EvaluationResponse(BaseModel):
     """
@@ -60,9 +61,6 @@ class EvaluationResponse(BaseModel):
     justification: str | None = Field(None, description="Justification for the score")
     execution_log_id: str | None = Field(None, description="Execution log ID for use in monitoring")
     cost: float | int | None = Field(None, description="Cost of the evaluation")
-
-
-
 
 
 class EvaluatorInfo(BaseModel):

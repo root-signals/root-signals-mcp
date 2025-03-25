@@ -77,7 +77,9 @@ class EvaluatorService:
                     id=evaluator.id,
                     name=evaluator.name,
                     version_id=evaluator.version_id,
-                    updated_at=evaluator.updated_at.isoformat() if evaluator.updated_at else "1970-01-01T00:00:00Z",
+                    updated_at=evaluator.updated_at.isoformat()
+                    if evaluator.updated_at
+                    else "1970-01-01T00:00:00Z",
                     intent=getattr(evaluator.objective, "intent", None)
                     if hasattr(evaluator, "objective")
                     else None,
@@ -138,9 +140,7 @@ class EvaluatorService:
 
         return None
 
-    async def run_evaluation(
-        self, request: EvaluationRequest
-    ) -> EvaluationResponse:
+    async def run_evaluation(self, request: EvaluationRequest) -> EvaluationResponse:
         """Run a standard evaluation asynchronously.
 
         This method is used by the SSE server which requires async operation.
@@ -166,9 +166,7 @@ class EvaluatorService:
             logger.error(f"Error running evaluation: {e}", exc_info=settings.debug)
             raise RuntimeError(f"Failed to run evaluation: {str(e)}") from e
 
-    async def run_rag_evaluation(
-        self, request: RAGEvaluationRequest
-    ) -> EvaluationResponse:
+    async def run_rag_evaluation(self, request: RAGEvaluationRequest) -> EvaluationResponse:
         """Run a RAG evaluation with contexts asynchronously.
 
         This method is used by the SSE server which requires async operation.

@@ -100,7 +100,6 @@ class SSEMCPServer:
             error_result = {"error": f"Unknown tool: {name}"}
             return [TextContent(type="text", text=json.dumps(error_result))]
 
-
         try:
             result = await handler(arguments)
             return [TextContent(type="text", text=json.dumps(result))]
@@ -126,9 +125,7 @@ class SSEMCPServer:
             if not evaluator:
                 return {"error": f"Evaluator with ID '{request.evaluator_id}' not found"}
 
-            response: EvaluationResponse = await self.evaluator_service.run_evaluation(
-                request
-            )
+            response: EvaluationResponse = await self.evaluator_service.run_evaluation(request)
             return response.model_dump(exclude_none=True)
 
         except ValidationError as e:
@@ -153,9 +150,7 @@ class SSEMCPServer:
             if requires_context and not request.contexts:
                 return {"error": "This evaluator requires context, but none was provided"}
 
-            response: EvaluationResponse = await self.evaluator_service.run_rag_evaluation(
-                request
-            )
+            response: EvaluationResponse = await self.evaluator_service.run_rag_evaluation(request)
             return response.model_dump(exclude_none=True)
 
         except ValidationError as e:

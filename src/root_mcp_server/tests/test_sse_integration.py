@@ -1,112 +1,217 @@
-"""Integration tests for the RootSignals MCP Server using SSE transport.
+"""Integration tests for the RootSignals MCP Server using SSE transport."""
 
-These tests verify the integration between the MCP client and server
-using the SSE transport mechanism.
-"""
-
-import json
+import logging
 import os
-import signal
-import subprocess
 import time
-from collections.abc import AsyncGenerator
+from collections.abc import Generator
+from pathlib import Path
 
+import httpx
 import pytest
-import pytest_asyncio
-from mcp.client.session import ClientSession
-from mcp.client.sse import sse_client
+from python_on_whales import DockerClient
 
-# Skip tests if no API key is available
+from root_mcp_server.client import RootSignalsMCPClient
+
 pytestmark = pytest.mark.skipif(
     os.environ.get("ROOT_SIGNALS_API_KEY") is None,
     reason="ROOT_SIGNALS_API_KEY environment variable not set",
 )
 
+docker = DockerClient()
+PROJECT_ROOT = Path(__file__).parents[3]
 
-@pytest_asyncio.fixture(scope="module")
-async def sse_server_process():
-    """Start an SSE server process for testing."""
-    # Environment variables for the server process
-    env = os.environ.copy()
-    env["TRANSPORT"] = "sse"
-    env["HOST"] = "127.0.0.1"  # Use localhost for tests
-    env["PORT"] = "9999"  # Use a different port for tests
+logger = logging.getLogger("test_sse_integration")
+logger.setLevel(logging.DEBUG)
+log_handler = logging.StreamHandler()
+log_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+log_handler.setFormatter(formatter)
+logger.addHandler(log_handler)
 
-    # Start server as a subprocess - using sse_server directly
-    server_process = subprocess.Popen(
-        ["python", "-m", "src.root_mcp_server.sse_server"],
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
 
-    # Allow time for server to start
-    time.sleep(2)
+@pytest.fixture(scope="module")
+def compose_up_mcp_server() -> Generator[None]:
+    os.chdir(PROJECT_ROOT)
 
     try:
-        # Check if process is still running
-        if server_process.poll() is not None:
-            # Server failed to start
-            stdout, stderr = server_process.communicate()
-            raise RuntimeError(f"Server process failed to start: {stderr.decode('utf-8')}")
+        containers = docker.compose.ps()
+        if containers and any(c.state.running for c in containers):
+            logger.info("Docker Compose service is already running, stopping it first")
+            docker.compose.down(volumes=True)
+            time.sleep(2)
 
-        # Server is running, yield it to the test
-        yield server_process
+        logger.info("Starting Docker Compose service")
+        docker.compose.up(detach=True)
+
+        healthy = False
+        retries = 0
+        max_retries = 15
+
+        while not healthy and retries < max_retries:
+            try:
+                containers = docker.compose.ps()
+
+                if containers:
+                    container = containers[0]
+
+                    if (
+                        container.state
+                        and container.state.health
+                        and container.state.health.status == "healthy"
+                    ):
+                        logger.info("Docker Compose service is healthy")
+                        healthy = True
+                    else:
+                        time.sleep(3)
+                        retries += 1
+                else:
+                    time.sleep(3)
+                    retries += 1
+            except Exception as e:
+                logger.error(f"Error checking service health: {e}")
+                time.sleep(3)
+                retries += 1
+
+        if not healthy:
+            logs = docker.compose.logs()
+            logger.error(f"Docker Compose logs:\n{logs}")
+            raise RuntimeError("Docker Compose service failed to start or become healthy")
+
+        try:
+            response = httpx.get("http://localhost:9090/health", timeout=5)
+            logger.info(f"Health endpoint response: {response.status_code}")
+        except Exception as e:
+            logger.warning(f"Could not connect to health endpoint: {e}")
+
+        time.sleep(3)
+        yield
+    except Exception as e:
+        logger.error(f"Failed to set up Docker Compose: {e}")
+        raise
     finally:
-        # Ensure server is terminated
-        if server_process.poll() is None:  # Process is still running
-            server_process.terminate()
-            server_process.wait(timeout=5)
-
-            # If still running, force kill
-            if server_process.poll() is None:
-                if os.name == "nt":  # Windows
-                    server_process.kill()
-                else:  # Unix-like
-                    os.kill(server_process.pid, signal.SIGKILL)
-
-
-@pytest_asyncio.fixture(scope="function")
-async def sse_client_session(sse_server_process) -> AsyncGenerator[ClientSession]:
-    """Create an MCP client session using SSE transport.
-
-    Args:
-        sse_server_process: The running SSE server process
-
-    Yields:
-        An initialized MCP client session
-    """
-    # Connect to the SSE server
-    server_url = "http://127.0.0.1:9999/sse"
-
-    # Create client context manager
-    async with sse_client(server_url) as sse_transport:
-        read_stream, write_stream = sse_transport
-
-        # Create and initialize the client session
-        async with ClientSession(read_stream, write_stream) as session:
-            # Initialize the session
-            await session.initialize()
-
-            # Yield the session to the test
-            yield session
+        logger.info("Cleaning up Docker Compose service")
+        docker.compose.down(volumes=True)
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Proper integration test infrastructure not yet in place")
-async def test_sse_list_evaluators(sse_client_session: ClientSession) -> None:
-    """Test listing evaluators using SSE transport."""
+async def test_list_tools(compose_up_mcp_server):
+    """Test listing tools via SSE transport."""
+    logger.info("Connecting to MCP server")
+    client = RootSignalsMCPClient()
 
-    # Call the list_evaluators tool
-    response = await sse_client_session.call_tool("list_evaluators", {})
+    try:
+        await client.connect()
 
-    # Extract content and parse JSON
-    text_content = next((item for item in response.content if item.type == "text"), None)
-    assert text_content is not None
+        # List tools
+        tools = await client.list_tools()
 
-    # Parse the JSON response
-    result = json.loads(text_content.text)
+        # Verify expected tools are available
+        tool_names = {tool["name"] for tool in tools}
+        expected_tools = {"list_evaluators", "run_evaluation", "run_rag_evaluation"}
 
-    # Assertions
-    assert "evaluators" in result
-    assert result["count"] > 0
+        assert expected_tools.issubset(tool_names), f"Missing expected tools. Found: {tool_names}"
+        logger.info(f"Found expected tools: {tool_names}")
+    finally:
+        await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_list_evaluators(compose_up_mcp_server):
+    """Test listing evaluators via SSE transport."""
+    logger.info("Connecting to MCP server")
+    client = RootSignalsMCPClient()
+
+    try:
+        await client.connect()
+
+        # List evaluators
+        evaluators = await client.list_evaluators()
+
+        # Verify evaluators are available
+        assert len(evaluators) > 0, "No evaluators found"
+        logger.info(f"Found {len(evaluators)} evaluators")
+    finally:
+        await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_run_evaluation(compose_up_mcp_server):
+    """Test running a standard evaluation via SSE transport."""
+    logger.info("Connecting to MCP server")
+    client = RootSignalsMCPClient()
+
+    try:
+        await client.connect()
+
+        # Get evaluators
+        evaluators = await client.list_evaluators()
+
+        # Find a standard evaluator
+        standard_evaluator = next(
+            (e for e in evaluators if not e.get("requires_contexts", False)), None
+        )
+
+        if not standard_evaluator:
+            pytest.skip("No standard evaluator found")
+
+        logger.info(f"Using evaluator: {standard_evaluator['name']}")
+
+        # Run evaluation
+        result = await client.run_evaluation(
+            evaluator_id=standard_evaluator["id"],
+            request="What is the capital of France?",
+            response="The capital of France is Paris, which is known as the City of Light.",
+        )
+
+        assert "score" in result, "No score in evaluation result"
+        assert "justification" in result, "No justification in evaluation result"
+        logger.info(f"Evaluation completed with score: {result['score']}")
+    finally:
+        await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_run_rag_evaluation(compose_up_mcp_server):
+    """Test running a RAG evaluation via SSE transport."""
+    logger.info("Connecting to MCP server")
+    client = RootSignalsMCPClient()
+
+    try:
+        await client.connect()
+
+        # Get evaluators
+        evaluators = await client.list_evaluators()
+
+        # Find a RAG evaluator
+        faithfulness_evaluators = [
+            e
+            for e in evaluators
+            if any(
+                kw in e.get("name", "").lower()
+                for kw in ["faithfulness", "context", "rag", "relevance"]
+            )
+        ]
+
+        rag_evaluator = next(iter(faithfulness_evaluators), None)
+
+        if not rag_evaluator:
+            pytest.skip("No RAG evaluator found")
+
+        logger.info(f"Using evaluator: {rag_evaluator['name']}")
+
+        # Run RAG evaluation
+        result = await client.run_rag_evaluation(
+            evaluator_id=rag_evaluator["id"],
+            request="What is the capital of France?",
+            response="The capital of France is Paris, which is known as the City of Light.",
+            contexts=[
+                "Paris is the capital and most populous city of France. It is located on the Seine River.",
+                "France is a country in Western Europe with several overseas territories and regions.",
+            ],
+        )
+
+        assert "score" in result, "No score in RAG evaluation result"
+        assert "justification" in result, "No justification in RAG evaluation result"
+        logger.info(f"RAG evaluation completed with score: {result['score']}")
+    finally:
+        await client.disconnect()

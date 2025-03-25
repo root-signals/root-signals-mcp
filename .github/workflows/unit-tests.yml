@@ -1,0 +1,39 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          ln -s ~/.cargo/bin/uv /usr/local/bin/uv
+
+      - name: Install dependencies with uv
+        run: |
+          uv sync --extra dev
+          
+      - name: Run unit tests
+        run: uv run python -m pytest src/root_mcp_server/tests/ -v --ignore=src/root_mcp_server/tests/test_sse_integration.py
+        
+      - name: Run linting with ruff
+        run: uv run ruff check src/
+        
+      - name: Run type checking with mypy
+        run: uv run mypy src/
