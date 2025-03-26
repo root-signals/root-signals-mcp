@@ -59,4 +59,11 @@ From all other clients that support sse transport - add the server to your confi
 
 ## How to contribute
 
-Contributions are welcome
+Contributions are welcome but should be applicable to all users
+
+The minimal steps include:
+1. `uv sync --extra dev`
+2. Add your code and your tests to `src/root_mcp_server/tests/`
+3. `docker compose up --build`
+4. `ROOT_SIGNALS_API_KEY=<something> uv run pytest .` - all should pass
+5. `ruff format . && ruff check --fix`

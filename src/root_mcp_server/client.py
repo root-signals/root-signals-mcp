@@ -1,7 +1,9 @@
-"""MCP client implementation for connecting to the RootSignals MCP Server via SSE.
+"""MCP client example implementation for connecting to the RootSignals MCP Server via SSE.
 
 This module provides a client to interact with the MCP server using the
-Server-Sent Events (SSE) transport for network/Docker environments.
+Server-Sent Events (SSE) transport
+
+This is a simplified example implementation for testing purposes.
 """
 
 import json
@@ -11,6 +13,7 @@ from typing import Any
 
 from mcp.client.session import ClientSession
 from mcp.client.sse import sse_client
+from mcp.types import TextContent, Tool
 
 logger = logging.getLogger("root_mcp_server.client")
 
@@ -68,7 +71,7 @@ class RootSignalsMCPClient:
         if not self.connected or self.session is None:
             raise RuntimeError("Client is not connected to the MCP server")
 
-    async def list_tools(self) -> list[dict[str, Any]]:
+    async def list_tools(self) -> list[Tool]:
         """List available tools from the MCP server.
 
         Returns:
@@ -78,7 +81,6 @@ class RootSignalsMCPClient:
 
         response = await self.session.list_tools()
 
-        # Convert the tools to a dictionary format
         return [
             {
                 "name": tool.name,
@@ -88,7 +90,7 @@ class RootSignalsMCPClient:
             for tool in response.tools
         ]
 
-    async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> list[TextContent]:
         """Call a tool on the MCP server.
 
         Args:
@@ -102,15 +104,13 @@ class RootSignalsMCPClient:
 
         response = await self.session.call_tool(tool_name, arguments)
 
-        # Extract the text content from the response
         text_content = next((item for item in response.content if item.type == "text"), None)
         if not text_content:
             raise ValueError("No text content found in the tool response")
 
-        # Parse the JSON response
         return json.loads(text_content.text)
 
-    async def list_evaluators(self) -> list[dict[str, Any]]:
+    async def list_evaluators(self) -> list[TextContent]:
         """List available evaluators from the RootSignals API.
 
         Returns:

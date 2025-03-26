@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from typing import Any
 
 import pytest
 
@@ -19,31 +20,24 @@ logger = logging.getLogger("root_mcp_server_tests")
 
 
 @pytest.mark.asyncio
-async def test_server_initialization(mcp_server):
+async def test_server_initialization(mcp_server: Any) -> None:
     """Test MCP server initialization."""
-    # Just verify the server initialized successfully
     assert mcp_server.evaluator_service is not None
     logger.info("MCP Server initialized successfully")
 
 
 @pytest.mark.asyncio
-async def test_list_tools(mcp_server):
+async def test_list_tools(mcp_server: Any) -> None:
     """Test the list_tools method."""
-    # List tools
     tools = await mcp_server.list_tools()
-
-    # Verify tools list format
     assert len(tools) >= 3, f"Expected at least 3 tools, found {len(tools)}"
 
-    # Convert tool objects to dict for easier inspection
     tool_dict = {tool.name: tool for tool in tools}
 
-    # Check required tools are available
     assert "list_evaluators" in tool_dict, "list_evaluators tool not found"
     assert "run_evaluation" in tool_dict, "run_evaluation tool not found"
     assert "run_rag_evaluation" in tool_dict, "run_rag_evaluation tool not found"
 
-    # Verify tool schema for each tool
     for tool in tools:
         assert hasattr(tool, "name"), f"Tool missing name: {tool}"
         assert hasattr(tool, "description"), f"Tool missing description: {tool.name}"
@@ -53,16 +47,15 @@ async def test_list_tools(mcp_server):
 
 
 @pytest.mark.asyncio
-async def test_call_tool_list_evaluators(mcp_server):
-    """Test calling the list_evaluators tool."""
-    # Call the tool
+async def test_call_tool_list_evaluators__basic_api_response_includes_expected_fields(
+    mcp_server: Any,
+) -> None:
+    """Test basic functionality of the list_evaluators tool."""
     result = await mcp_server.call_tool("list_evaluators", {})
 
-    # Check response format
     assert len(result) == 1, "Expected single result content"
     assert result[0].type == "text", "Expected text content"
 
-    # Parse the JSON response
     response_data = json.loads(result[0].text)
     assert "evaluators" in response_data, "Response missing evaluators list"
     assert len(response_data["evaluators"]) > 0, "No evaluators found"
@@ -73,12 +66,39 @@ async def test_call_tool_list_evaluators(mcp_server):
 
 
 @pytest.mark.asyncio
-async def test_call_tool_run_evaluation(mcp_server):
+async def test_call_tool_list_evaluators__returns_newest_evaluators_first_by_default(
+    mcp_server: Any,
+) -> None:
+    """Test that evaluators are sorted by updated_at date in descending order (newest first)."""
+    result = await mcp_server.call_tool("list_evaluators", {})
+    response_data = json.loads(result[0].text)
+
+    assert "evaluators" in response_data, "Response missing evaluators list"
+    evaluators = response_data["evaluators"]
+
+    assert len(evaluators) > 2, "API should return at least native evaluators, which is more than 2"
+
+    for i in range(len(evaluators) - 1):
+        current_date = evaluators[i].get("updated_at", "")
+        next_date = evaluators[i + 1].get("updated_at", "")
+
+        if not current_date or not next_date:
+            continue
+
+        assert current_date >= next_date, (
+            f"Evaluators not sorted by updated_at in descending order. "
+            f"Found {current_date} before {next_date}"
+        )
+
+    logger.info("Verified evaluators are sorted with newest first")
+
+
+@pytest.mark.asyncio
+async def test_call_tool_run_evaluation(mcp_server: Any) -> None:
     """Test calling the run_evaluation tool."""
     list_result = await mcp_server.call_tool("list_evaluators", {})
     evaluators_data = json.loads(list_result[0].text)
 
-    # Try to find Clarity evaluator first, or any non-context requiring evaluator
     standard_evaluator = next(
         (e for e in evaluators_data["evaluators"] if e.get("name") == "Clarity"),
         next(
@@ -87,8 +107,7 @@ async def test_call_tool_run_evaluation(mcp_server):
         ),
     )
 
-    if not standard_evaluator:
-        pytest.skip("No standard evaluator found")
+    assert standard_evaluator is not None, "No standard evaluator found"
 
     logger.info(f"Using evaluator: {standard_evaluator['name']}")
 
@@ -100,11 +119,9 @@ async def test_call_tool_run_evaluation(mcp_server):
 
     result = await mcp_server.call_tool("run_evaluation", arguments)
 
-    # Check response format
     assert len(result) == 1, "Expected single result content"
     assert result[0].type == "text", "Expected text content"
 
-    # Parse the JSON response
     response_data = json.loads(result[0].text)
     assert "score" in response_data, "Response missing score"
     assert "justification" in response_data, "Response missing justification"
@@ -113,13 +130,11 @@ async def test_call_tool_run_evaluation(mcp_server):
 
 
 @pytest.mark.asyncio
-async def test_call_tool_run_rag_evaluation(mcp_server):
+async def test_call_tool_run_rag_evaluation(mcp_server: Any) -> None:
     """Test calling the run_rag_evaluation tool."""
-    # Get evaluators first
     list_result = await mcp_server.call_tool("list_evaluators", {})
     evaluators_data = json.loads(list_result[0].text)
 
-    # Try to find Faithfulness evaluator first (common RAG evaluator)
     rag_evaluator = next(
         (e for e in evaluators_data["evaluators"] if e.get("name") == "Faithfulness"),
         next(
@@ -127,12 +142,10 @@ async def test_call_tool_run_rag_evaluation(mcp_server):
         ),
     )
 
-    if not rag_evaluator:
-        pytest.skip("No RAG evaluator found")
+    assert rag_evaluator is not None, "No RAG evaluator found"
 
     logger.info(f"Using evaluator: {rag_evaluator['name']}")
 
-    # Call the tool with both request and reference contexts
     arguments = {
         "evaluator_id": rag_evaluator["id"],
         "request": "What is the capital of France?",
@@ -145,11 +158,9 @@ async def test_call_tool_run_rag_evaluation(mcp_server):
 
     result = await mcp_server.call_tool("run_rag_evaluation", arguments)
 
-    # Check response format
     assert len(result) == 1, "Expected single result content"
     assert result[0].type == "text", "Expected text content"
 
-    # Parse the JSON response
     response_data = json.loads(result[0].text)
     assert "score" in response_data, "Response missing score"
     assert "justification" in response_data, "Response missing justification"
@@ -158,16 +169,14 @@ async def test_call_tool_run_rag_evaluation(mcp_server):
 
 
 @pytest.mark.asyncio
-async def test_call_unknown_tool(mcp_server):
+async def test_call_unknown_tool(mcp_server: Any) -> None:
     """Test calling an unknown tool."""
-    # Call an unknown tool
+
     result = await mcp_server.call_tool("unknown_tool", {})
 
-    # Check response format
     assert len(result) == 1, "Expected single result content"
     assert result[0].type == "text", "Expected text content"
 
-    # Parse the JSON response
     response_data = json.loads(result[0].text)
     assert "error" in response_data, "Response missing error message"
     assert "Unknown tool" in response_data["error"], "Unexpected error message"
@@ -176,12 +185,11 @@ async def test_call_unknown_tool(mcp_server):
 
 
 @pytest.mark.asyncio
-async def test_run_evaluation_validation_error(mcp_server):
+async def test_run_evaluation_validation_error(mcp_server: Any) -> None:
     """Test validation error in run_evaluation."""
-    # Call run_evaluation with missing required parameters
+
     result = await mcp_server.call_tool("run_evaluation", {"evaluator_id": "some_id"})
 
-    # Check response format
     response_data = json.loads(result[0].text)
     assert "error" in response_data, "Response missing error message"
 
@@ -189,13 +197,12 @@ async def test_run_evaluation_validation_error(mcp_server):
 
 
 @pytest.mark.asyncio
-async def test_run_rag_evaluation_missing_context(mcp_server):
+async def test_run_rag_evaluation_missing_context(mcp_server: Any) -> None:
     """Test calling run_rag_evaluation with missing contexts."""
-    # First get list of evaluators to find a suitable one for testing
+
     list_result = await mcp_server.call_tool("list_evaluators", {})
     evaluators_data = json.loads(list_result[0].text)
 
-    # Find a RAG evaluator that requires contexts
     rag_evaluators = [
         e
         for e in evaluators_data["evaluators"]
@@ -207,24 +214,18 @@ async def test_run_rag_evaluation_missing_context(mcp_server):
 
     rag_evaluator = next(iter(rag_evaluators), None)
 
-    if not rag_evaluator:
-        pytest.skip("No RAG evaluator found")
+    assert rag_evaluator is not None, "No RAG evaluator found"
 
-    # Call run_rag_evaluation with empty contexts
     arguments = {
         "evaluator_id": rag_evaluator["id"],
         "request": "Test request",
         "response": "Test response",
-        "contexts": [],  # Empty contexts
+        "contexts": [],
     }
 
     result = await mcp_server.call_tool("run_rag_evaluation", arguments)
-
-    # Parse the JSON response
     response_data = json.loads(result[0].text)
 
-    # It may or may not fail depending on the specific evaluator requirements
-    # So we just log the result rather than asserting
     if "error" in response_data:
         logger.info(f"Empty contexts test produced error as expected: {response_data['error']}")
     else:

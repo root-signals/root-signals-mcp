@@ -24,6 +24,11 @@ from root_mcp_server.settings import settings
 logger = logging.getLogger("root_mcp_server")
 
 
+def _sort_evaluators(evaluators: list[Evaluator]) -> list[Evaluator]:
+    """Sort evaluators by updated_at date from newest to oldest"""
+    return sorted(evaluators, key=lambda x: x.updated_at, reverse=True)
+
+
 class EvaluatorService:
     """Service for interacting with RootSignals evaluators."""
 
@@ -76,21 +81,20 @@ class EvaluatorService:
                 EvaluatorInfo(
                     id=evaluator.id,
                     name=evaluator.name,
-                    version_id=evaluator.version_id,
                     updated_at=evaluator.updated_at.isoformat()
                     if evaluator.updated_at
                     else "1970-01-01T00:00:00Z",
                     intent=getattr(evaluator.objective, "intent", None)
                     if hasattr(evaluator, "objective")
                     else None,
-                    requires_contexts=getattr(
+                    require_contexts=getattr(
                         evaluator, "evaluator_require_reference_variables", False
                     ),
                     requires_expected_output=getattr(
                         evaluator, "evaluator_require_expected_output", False
                     ),
                 )
-                for evaluator in evaluators_list
+                for evaluator in _sort_evaluators(evaluators_list)
             ]
 
             total = len(evaluators_data)

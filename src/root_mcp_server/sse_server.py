@@ -14,7 +14,6 @@ import uvicorn
 from mcp.server.lowlevel import Server
 from mcp.server.sse import SseServerTransport
 from mcp.types import TextContent, Tool
-from pydantic import ValidationError
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import Response
@@ -25,11 +24,14 @@ from root_mcp_server.schema import (
     EvaluationRequest,
     EvaluationResponse,
     EvaluatorsListResponse,
+    ListEvaluatorsRequest,
     RAGEvaluationRequest,
+    RunEvaluationToolRequest,
+    RunRAGEvaluationToolRequest,
+    UnknownToolRequest,
 )
 from root_mcp_server.settings import settings
 
-# Configure logging
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper()),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -45,8 +47,7 @@ class SSEMCPServer:
         self.evaluator_service = EvaluatorService()
         self.app = Server("RootSignals Evaluators")
 
-        # Register tool handlers with MCP server
-        @self.app.list_tools()
+        @self.app.list_tools()  # TODO: Check with MCP protocol if this is expected to be exposed to clients
         async def list_tools() -> list[Tool]:
             return await self.list_tools()
 
@@ -97,68 +98,60 @@ class SSEMCPServer:
         handler = self.function_map.get(name)
         if not handler:
             logger.warning(f"Unknown tool: {name}")
-            error_result = {"error": f"Unknown tool: {name}"}
-            return [TextContent(type="text", text=json.dumps(error_result))]
+            return [TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))]
 
         try:
-            result = await handler(arguments)
-            return [TextContent(type="text", text=json.dumps(result))]
+            if name == "list_evaluators":
+                request_model = ListEvaluatorsRequest(**arguments)
+            elif name == "run_evaluation":
+                request_model = RunEvaluationToolRequest(**arguments)
+            elif name == "run_rag_evaluation":
+                request_model = RunRAGEvaluationToolRequest(**arguments)
+            else:
+                request_model = UnknownToolRequest(**arguments)
+
+            result = await handler(request_model)
+            return [TextContent(type="text", text=result.model_dump_json(exclude_none=True))]
+
         except Exception as e:
             logger.error(f"Error calling tool {name}: {e}", exc_info=settings.debug)
-            error_result = {"error": f"Error calling tool {name}: {e}"}
-            return [TextContent(type="text", text=json.dumps(error_result))]
+            return [
+                TextContent(
+                    type="text", text=json.dumps({"error": f"Error calling tool {name}: {e}"})
+                )
+            ]
 
-    async def _handle_list_evaluators(self, params: dict[str, Any]) -> EvaluatorsListResponse:
+    async def _handle_list_evaluators(
+        self, params: ListEvaluatorsRequest
+    ) -> EvaluatorsListResponse:
         """Handle list_evaluators tool call."""
         logger.debug("Handling list_evaluators request")
-        response: EvaluatorsListResponse = await self.evaluator_service.list_evaluators()
-        return response.model_dump(exclude_none=True)
+        return await self.evaluator_service.list_evaluators()
 
-    async def _handle_run_evaluation(self, params: dict[str, Any]) -> EvaluationResponse:
+    async def _handle_run_evaluation(self, params: RunEvaluationToolRequest) -> EvaluationResponse:
         """Handle run_evaluation tool call."""
-        logger.debug(f"Handling run_evaluation request: {params}")
+        logger.debug(f"Handling run_evaluation request for evaluator {params.evaluator_id}")
 
-        try:
-            request = EvaluationRequest.model_validate(params)
+        eval_request = EvaluationRequest(
+            evaluator_id=params.evaluator_id, request=params.request, response=params.response
+        )
 
-            evaluator = await self.evaluator_service.get_evaluator_by_id(request.evaluator_id)
-            if not evaluator:
-                return {"error": f"Evaluator with ID '{request.evaluator_id}' not found"}
+        return await self.evaluator_service.run_evaluation(eval_request)
 
-            response: EvaluationResponse = await self.evaluator_service.run_evaluation(request)
-            return response.model_dump(exclude_none=True)
-
-        except ValidationError as e:
-            logger.error(f"Validation error: {e}")
-            return {"error": f"Validation error: {e}"}
-        except Exception as e:
-            logger.error(f"Error running evaluation: {e}", exc_info=True)
-            return {"error": f"Error running evaluation: {e}"}
-
-    async def _handle_run_rag_evaluation(self, params: dict[str, Any]) -> EvaluationResponse:
+    async def _handle_run_rag_evaluation(
+        self, params: RunRAGEvaluationToolRequest
+    ) -> EvaluationResponse:
         """Handle run_rag_evaluation tool call."""
-        logger.debug(f"Handling run_rag_evaluation request: {params}")
+        logger.debug(f"Handling run_rag_evaluation request for evaluator {params.evaluator_id}")
 
-        try:
-            request = RAGEvaluationRequest.model_validate(params)
+        rag_request = RAGEvaluationRequest(
+            evaluator_id=params.evaluator_id,
+            request=params.request,
+            response=params.response,
+            contexts=params.contexts,
+        )
 
-            evaluator = await self.evaluator_service.get_evaluator_by_id(request.evaluator_id)
-            if not evaluator:
-                return {"error": f"Evaluator with ID '{request.evaluator_id}' not found"}
-
-            requires_context = evaluator.requires_contexts
-            if requires_context and not request.contexts:
-                return {"error": "This evaluator requires context, but none was provided"}
-
-            response: EvaluationResponse = await self.evaluator_service.run_rag_evaluation(request)
-            return response.model_dump(exclude_none=True)
-
-        except ValidationError as e:
-            logger.error(f"Validation error: {e}")
-            return {"error": f"Validation error: {e}"}
-        except Exception as e:
-            logger.error(f"Error running RAG evaluation: {e}", exc_info=True)
-            return {"error": f"Error running RAG evaluation: {e}"}
+        return await self.evaluator_service.run_rag_evaluation(rag_request)
 
 
 def create_app(server: SSEMCPServer) -> Starlette:
