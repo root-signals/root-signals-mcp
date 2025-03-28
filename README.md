@@ -1,16 +1,16 @@
-# RootSignals MCP Server
+# Root Signals MCP Server
 
-A Model Context Protocol (MCP) server that exposes RootSignals evaluators as tools for AI assistants.
+A Model Context Protocol (MCP) server that exposes Root Signals evaluators as tools for AI assistants.
 
 ## Overview
 
-This project implements an MCP server that allows AI assistants to use RootSignals evaluators as tools. 
-It provides a bridge between the RootSignals API and MCP client applications, allowing AI assistants 
+This project implements an MCP server that allows AI assistants to use Root Signals evaluators as tools. 
+It provides a bridge between the Root Signals API and MCP client applications, allowing AI assistants 
 to evaluate responses against various quality criteria.
 
 ## Features
 
-- Exposes RootSignals evaluators as MCP tools
+- Exposes Root Signals evaluators as MCP tools
 - Supports both standard evaluation and RAG evaluation with contexts
 - Implements sse
 - Compatible with various MCP clients
@@ -20,13 +20,17 @@ to evaluate responses against various quality criteria.
 
 The server exposes the following tools:
 
-1. `list_evaluators` - Lists all available evaluators from RootSignals
+1. `list_evaluators` - Lists all available evaluators from Root Signals
 2. `run_evaluation` - Runs a standard evaluation using a specified evaluator
 3. `run_rag_evaluation` - Runs a RAG evaluation with contexts using a specified evaluator
 
 ## Usage
 
-Start the docker container  
+#### 1. Get Your API Key
+[Sign up & create a key](https://app.rootsignals.ai/settings/api-keys) or [generate a temporary key](https://app.rootsignals.ai/demo-user)
+
+
+#### 2. Run the MCP Server
 
 ```bash
 docker run -e ROOT_SIGNALS_API_KEY=<your_key> -p 0.0.0.0:9090:9090 --name=rs-mcp -d ghcr.io/root-signals/root-signals-mcp:latest
