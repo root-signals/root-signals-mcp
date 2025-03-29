@@ -85,6 +85,15 @@ From all other clients that support sse transport - add the server to your confi
 }
 ```
 
+
+## How to use this server
+
+This implementation is compatible with any MCP client that can do tool calls. A list is on the official page [MCP clients](https://modelcontextprotocol.io/clients)
+
+To help integrate the MCP into programmatic workflows from your code, we also include an [example client](src/root_mcp_server/client.py)
+that demonstrates how to call our listing and evaluation tools directly, in contrast to having an agent doing the calls. 
+We use this client in our own [tests here](src/root_mcp_server/test/test_client.py)
+
 ## How to contribute
 
 Contributions are welcome but should be applicable to all users

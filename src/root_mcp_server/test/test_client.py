@@ -112,8 +112,7 @@ async def test_client_run_evaluation(compose_up_mcp_server: Any) -> None:
             (e for e in evaluators if not e.get("requires_contexts", False)), None
         )
 
-        if not standard_evaluator:
-            pytest.skip("No standard evaluator found")
+        assert standard_evaluator is not None, "No standard evaluator found"
 
         logger.info(f"Using evaluator: {standard_evaluator['name']}")
 
