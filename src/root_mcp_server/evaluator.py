@@ -54,8 +54,8 @@ class EvaluatorService:
                 EvaluatorInfo(
                     id=evaluator.id,
                     name=evaluator.name,
-                    updated_at=evaluator.updated_at.isoformat()
-                    if evaluator.updated_at
+                    created_at=evaluator.created_at.isoformat()
+                    if evaluator.created_at
                     else "1970-01-01T00:00:00Z",
                     intent=getattr(evaluator.objective, "intent", None)
                     if hasattr(evaluator, "objective")

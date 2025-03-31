@@ -69,7 +69,7 @@ async def test_call_tool_list_evaluators__basic_api_response_includes_expected_f
 async def test_call_tool_list_evaluators__returns_newest_evaluators_first_by_default(
     mcp_server: Any,
 ) -> None:
-    """Test that evaluators are sorted by updated_at date in descending order (newest first)."""
+    """Test that evaluators are sorted by created_at date in descending order (newest first)."""
     result = await mcp_server.call_tool("list_evaluators", {})
     response_data = json.loads(result[0].text)
 
@@ -79,14 +79,14 @@ async def test_call_tool_list_evaluators__returns_newest_evaluators_first_by_def
     assert len(evaluators) > 2, "API should return at least native evaluators, which is more than 2"
 
     for i in range(len(evaluators) - 1):
-        current_date = evaluators[i].get("updated_at", "")
-        next_date = evaluators[i + 1].get("updated_at", "")
+        current_date = evaluators[i].get("created_at", "")
+        next_date = evaluators[i + 1].get("created_at", "")
 
         if not current_date or not next_date:
             continue
 
         assert current_date >= next_date, (
-            f"Evaluators not sorted by updated_at in descending order. "
+            f"Evaluators not sorted by created_at in descending order. "
             f"Found {current_date} before {next_date}"
         )
 

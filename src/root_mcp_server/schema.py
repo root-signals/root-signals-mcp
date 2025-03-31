@@ -135,7 +135,7 @@ class EvaluatorInfo(BaseModel):
 
     name: str = Field(..., description="Name of the evaluator")
     id: str = Field(..., description="ID of the evaluator")
-    updated_at: str = Field(..., description="Last updated timestamp of the evaluator")
+    created_at: str = Field(..., description="Creation timestamp of the evaluator")
     intent: str | None = Field(None, description="Intent of the evaluator")
     requires_contexts: bool | None = Field(
         False, description="Whether the evaluator requires context"
