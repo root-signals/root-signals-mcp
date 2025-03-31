@@ -701,7 +701,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.20.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "python-on-whales", marker = "extra == 'dev'", specifier = ">=0.69.0" },
-    { name = "root-signals", specifier = "==1.5.2" },
+    { name = "root-signals", specifier = "==1.5.3" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.0.244" },
     { name = "sse-starlette", specifier = ">=2.2.1" },
     { name = "starlette", specifier = ">=0.28.0" },
@@ -712,7 +712,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "root-signals"
-version = "1.5.2"
+version = "1.5.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -725,9 +725,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "validators" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/da/bf/f01e98ac9c90dcb3dd9aa904f5bc6820cb40a7bac18ff5449caa0987f529/root_signals-1.5.2.tar.gz", hash = "sha256:883e03ffbc09ec1fc4878af6a3096ef6c4b742a5af170b68904e1928bf9865e7", size = 201654 }
+sdist = { url = "https://files.pythonhosted.org/packages/37/70/3844e286e6f4ad90b9237cc83973c326f4fd6edad1d9874169eed26c685c/root_signals-1.5.3.tar.gz", hash = "sha256:0dac85312838129842d2110e2b855ecf02da5a87f1228de175eba1321348321f", size = 187362 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/2d/3829c000d57418fbf4f0db015320e85cec5bbf7c97059322c284d46c1e42/root_signals-1.5.2-py3-none-any.whl", hash = "sha256:0073e3bd61f1a313a7afaa2af13e60518ad9c50b00d81e6ad694c42c0e2e8c38", size = 468166 },
+    { url = "https://files.pythonhosted.org/packages/70/c0/6b6c65034aaee230dcaafa97ea1566fd10b4f6b816140aa9941b0de228fd/root_signals-1.5.3-py3-none-any.whl", hash = "sha256:c9a04bd531904f58a47f842291290c4f6e18d7f2c5ad363cd33d9b81daea61bd", size = 460232 },
 ]
 
 [[package]]

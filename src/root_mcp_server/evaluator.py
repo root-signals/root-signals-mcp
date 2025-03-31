@@ -7,7 +7,6 @@ import logging
 from typing import Any
 
 from root import RootSignals
-from root.generated.openapi_aclient.models.evaluator import Evaluator
 from root.generated.openapi_aclient.models.evaluator_execution_result import (
     EvaluatorExecutionResult,
 )
@@ -24,26 +23,14 @@ from root_mcp_server.settings import settings
 logger = logging.getLogger("root_mcp_server")
 
 
-def _sort_evaluators(evaluators: list[Evaluator]) -> list[Evaluator]:
-    """Sort evaluators by updated_at date from newest to oldest"""
-    return sorted(evaluators, key=lambda x: x.updated_at, reverse=True)
-
-
 class EvaluatorService:
     """Service for interacting with RootSignals evaluators."""
 
     def __init__(self) -> None:
         """Initialize the evaluator service."""
-        # Create both async and sync clients - we need both because some methods
-        # only work in sync mode while we want to use async methods where possible
         self.async_client = RootSignals(
             api_key=settings.root_signals_api_key.get_secret_value(),
             run_async=True,
-        )
-
-        self.sync_client = RootSignals(
-            api_key=settings.root_signals_api_key.get_secret_value(),
-            run_async=False,
         )
 
         self.evaluators_cache: dict[str, Any] | None = None
@@ -60,21 +47,7 @@ class EvaluatorService:
         logger.info("Fetching evaluators from RootSignals API...")
 
         try:
-            # The client.evaluators.list() method seems synchronous even when run_async=True
-            # We'll run it in a separate thread to avoid blocking the event loop
-            import asyncio
-            from concurrent.futures import ThreadPoolExecutor
-
-            def get_evaluators() -> list[Evaluator]:
-                try:
-                    return self.sync_client.evaluators.list()
-                except Exception as e:
-                    raise RuntimeError(f"Error getting evaluators in thread: {e}") from e
-
-            with ThreadPoolExecutor() as executor:
-                evaluators_list = await asyncio.get_event_loop().run_in_executor(
-                    executor, get_evaluators
-                )
+            evaluators_list = self.async_client.evaluators.alist()
 
             # Trim down upstream response for better use with llms
             evaluators_data = [
@@ -87,14 +60,10 @@ class EvaluatorService:
                     intent=getattr(evaluator.objective, "intent", None)
                     if hasattr(evaluator, "objective")
                     else None,
-                    require_contexts=getattr(
-                        evaluator, "evaluator_require_reference_variables", False
-                    ),
-                    requires_expected_output=getattr(
-                        evaluator, "evaluator_require_expected_output", False
-                    ),
+                    requires_contexts=evaluator.requires_contexts,
+                    requires_expected_output=evaluator.requires_expected_output,
                 )
-                for evaluator in _sort_evaluators(evaluators_list)
+                async for evaluator in evaluators_list
             ]
 
             total = len(evaluators_data)

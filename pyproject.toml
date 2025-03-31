@@ -18,7 +18,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "root-signals==1.5.2",
+    "root-signals==1.5.3",
     "mcp-python>=0.1.4",
     "mcp[cli]>=1.4.1",
     "uvicorn>=0.18.0",
