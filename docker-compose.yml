@@ -1,0 +1,24 @@
+services:
+  root-mcp-server:
+    build: .
+    container_name: root-mcp-server
+    ports:
+      - "9090:9090"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=info
+      - HOST=0.0.0.0
+      - PORT=9090
+      - DEBUG=false
+      - ENV=production
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-I", "http://localhost:9090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s

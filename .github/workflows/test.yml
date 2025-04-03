@@ -1,0 +1,94 @@
+name: Integration Tests with Docker Compose
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          ln -s ~/.cargo/bin/uv /usr/local/bin/uv
+
+      - name: Install dependencies with uv
+        run: |
+          uv sync --extra dev
+          
+      - name: Create .env file from secrets
+        run: |
+          echo "ROOT_SIGNALS_API_KEY=${{ secrets.ROOT_SIGNALS_API_KEY }}" > .env
+          echo "Created .env file with API key"
+          # Also set it as environment variable for pytest
+          echo "ROOT_SIGNALS_API_KEY=${{ secrets.ROOT_SIGNALS_API_KEY }}" >> $GITHUB_ENV
+      
+      # GitHub-hosted runners already have Docker Compose installed
+      - name: Check Docker Compose version
+        run: docker compose version
+          
+      - name: Start containers
+        run: docker compose up -d --build
+        
+      - name: Wait for containers to be ready
+        run: |
+          echo "Waiting for containers to be ready..."
+          sleep 10
+          docker compose ps
+
+      - name: Check API key is set
+        run: |
+          if [ -z "$ROOT_SIGNALS_API_KEY" ]; then
+            echo "ERROR: ROOT_SIGNALS_API_KEY is not set. Tests will be skipped."
+            exit 1
+          else
+            echo "API key is set. Proceeding with tests."
+          fi
+      
+      - name: Run integration tests with coverage
+        run: |
+          uv run python -m pytest -v \
+            --cov=root_mcp_server \
+            --cov-report=xml:integration-coverage.xml \
+            --cov-report=term
+
+      - name: Collect docker logs on failure
+        if: failure()
+        run: |
+          mkdir -p ./logs
+          docker compose logs > ./logs/docker-compose.log
+          
+      - name: Upload logs as artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-logs
+          path: ./logs
+          retention-days: 5
+          
+      - name: Upload coverage to Codecov
+        if: success()
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./integration-coverage.xml
+          flags: integration
+          name: rootsignals-mcp-integration-codecov
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down
