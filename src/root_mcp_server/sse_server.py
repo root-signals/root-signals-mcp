@@ -197,7 +197,8 @@ if __name__ == "__main__":
         host = os.environ.get("HOST", settings.host)
         port = int(os.environ.get("PORT", settings.port))
 
-        logger.info(f"Starting RootSignals MCP Server v{settings.version}")
+        logger.info("Starting RootSignals MCP Server")
+        logger.info(f"Targeting API: {settings.root_signals_api_url}")
         logger.info(f"Environment: {settings.env}")
         logger.info(f"Transport: {settings.transport}")
         logger.info(f"Host: {host}, Port: {port}")

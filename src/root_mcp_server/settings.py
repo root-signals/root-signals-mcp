@@ -3,11 +3,35 @@
 This module provides a settings model for the unified server using pydantic-settings.
 """
 
+import re
 import sys
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def get_package_version() -> str:
+    """Get the version of the root-mcp-server package from pyproject.toml.
+
+    Returns:
+        The package version or a default value if not found
+    """
+    current_dir = Path(__file__).parent
+    for _ in range(4):
+        pyproject_path = current_dir / "pyproject.toml"
+        if pyproject_path.exists():
+            try:
+                content = pyproject_path.read_text()
+                version_match = re.search(r'version\s*=\s*"([^"]+)"', content)
+                if version_match:
+                    return version_match.group(1)
+            except Exception:
+                pass
+        current_dir = current_dir.parent
+
+    return "dev-version"
 
 
 class Settings(BaseSettings):
@@ -16,17 +40,24 @@ class Settings(BaseSettings):
     This class handles loading and validating configuration from environment variables.
     """
 
-    # Version
-    version: str = Field(default="0.1.0", description="Server version")
-
-    # RootSignals API key
     root_signals_api_key: SecretStr = Field(
-        default=...,  # Required field
+        default=...,
         description="RootSignals API key for authentication",
-        alias="ROOT_SIGNALS_API_KEY",
+    )
+    root_signals_api_url: str = Field(
+        default="https://api.app.rootsignals.ai",
+        description="RootSignals API URL",
+    )
+    root_signals_api_timeout: float = Field(
+        default=30.0,
+        description="Timeout in seconds for RootSignals API requests",
     )
 
-    # Server settings
+    version: str = Field(
+        default_factory=get_package_version,
+        description="Package version from pyproject.toml",
+    )
+
     host: str = Field(default="0.0.0.0", description="Host to bind to", alias="HOST")
     port: int = Field(default=9090, description="Port to listen on", alias="PORT")
     log_level: Literal["debug", "info", "warning", "error", "critical"] = Field(
@@ -34,7 +65,6 @@ class Settings(BaseSettings):
     )
     debug: bool = Field(default=False, description="Enable debug mode", alias="DEBUG")
 
-    # Transport settings
     transport: Literal["stdio", "sse", "websocket"] = Field(
         default="sse",
         description="Transport mechanism to use (stdio, sse, websocket)",
@@ -56,9 +86,7 @@ class Settings(BaseSettings):
     )
 
 
-# Create a global settings instance
 try:
-    # Load settings from environment or .env file
     settings = Settings()
 except Exception as e:
     sys.stderr.write(f"Error loading settings: {str(e)}\n")
