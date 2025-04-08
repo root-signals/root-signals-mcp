@@ -11,6 +11,8 @@ import pytest
 import pytest_asyncio
 from python_on_whales import DockerClient
 
+from root_mcp_server.sse_server import SSEMCPServer
+
 # Setup logging
 logger = logging.getLogger("root_mcp_server_tests")
 logger.setLevel(logging.DEBUG)
@@ -120,10 +122,8 @@ async def compose_up_mcp_server() -> Generator[None]:
 
 
 @pytest_asyncio.fixture(scope="module")
-async def mcp_server():
+async def mcp_server() -> Generator[SSEMCPServer]:
     """Create and initialize a real SSEMCPServer."""
-    from root_mcp_server.sse_server import SSEMCPServer
 
-    server = SSEMCPServer()
-    await server.initialize()
-    return server
+    yield SSEMCPServer()
+

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "root-mcp-server"
-version = "20250303-1"
+version = "20250408-1"
 description = "MCP server for RootSignals evaluators"
 readme = "README.md"
 authors = [

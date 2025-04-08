@@ -154,8 +154,6 @@ async def test_evaluator_service_integration__standard_evaluation(
     service: EvaluatorService = EvaluatorService()
 
     try:
-        await service.initialize()
-
         evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
         assert evaluators_response.count > 0, "No evaluators returned"
         assert len(evaluators_response.evaluators) > 0, "No evaluator objects returned"
@@ -206,8 +204,6 @@ async def test_evaluator_service_integration__rag_evaluation(compose_up_mcp_serv
     service: EvaluatorService = EvaluatorService()
 
     try:
-        await service.initialize()
-
         evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
         assert evaluators_response.count > 0, "No evaluators returned"
         assert len(evaluators_response.evaluators) > 0, "No evaluator objects returned"

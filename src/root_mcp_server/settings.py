@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     # Transport settings
     transport: Literal["stdio", "sse", "websocket"] = Field(
-        default="stdio",
+        default="sse",
         description="Transport mechanism to use (stdio, sse, websocket)",
         alias="TRANSPORT",
     )

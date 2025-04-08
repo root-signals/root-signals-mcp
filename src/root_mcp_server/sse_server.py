@@ -61,12 +61,6 @@ class SSEMCPServer:
             "run_rag_evaluation": self._handle_run_rag_evaluation,
         }
 
-    async def initialize(self) -> None:
-        """Initialize the server and required services."""
-        logger.info("Initializing MCP server...")
-        await self.evaluator_service.initialize()
-        logger.info("MCP server initialized successfully")
-
     async def list_tools(self) -> list[Tool]:
         """List available tools for the MCP server."""
         return [
@@ -184,7 +178,6 @@ def create_app(server: SSEMCPServer) -> Starlette:
 async def startup() -> SSEMCPServer:
     """Initialize the server during startup."""
     server = SSEMCPServer()
-    await server.initialize()
     return server
 
 
@@ -195,7 +188,6 @@ def run_server(host: str = "0.0.0.0", port: int = 9090) -> None:
     server = asyncio.run(startup())
 
     app = create_app(server)
-
     logger.info(f"SSE server listening on http://{host}:{port}/sse")
     uvicorn.run(app, host=host, port=port, log_level=settings.log_level.lower())
 
