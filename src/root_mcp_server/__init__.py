@@ -1,6 +1,8 @@
-"""RootSignals MCP Server Package.
+"""RootSignals MCP Server package.
 
-This package provides an MCP server that exposes RootSignals evaluators as tools.
+This package provides a server for the MCP protocol.
 """
 
-__version__ = "0.1.0"
+from root_mcp_server.settings import settings
+
+__version__ = settings.version

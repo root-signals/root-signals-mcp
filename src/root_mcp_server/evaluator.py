@@ -5,11 +5,11 @@ This module handles the integration with RootSignals evaluators.
 
 import logging
 
-from root import RootSignals
-from root.generated.openapi_aclient.models.evaluator_execution_result import (
-    EvaluatorExecutionResult,
+from root_mcp_server.root_api_client import (
+    ResponseValidationError,
+    RootSignalsApiClient,
+    RootSignalsAPIError,
 )
-
 from root_mcp_server.schema import (
     EvaluationRequest,
     EvaluationResponse,
@@ -19,7 +19,7 @@ from root_mcp_server.schema import (
 )
 from root_mcp_server.settings import settings
 
-logger = logging.getLogger("root_mcp_server")
+logger = logging.getLogger("root_mcp_server.evaluator")
 
 
 class EvaluatorService:
@@ -27,9 +27,9 @@ class EvaluatorService:
 
     def __init__(self) -> None:
         """Initialize the evaluator service."""
-        self.async_client = RootSignals(
+        self.async_client = RootSignalsApiClient(
             api_key=settings.root_signals_api_key.get_secret_value(),
-            run_async=True,
+            base_url=settings.root_signals_api_url,
         )
 
     async def fetch_evaluators(self) -> list[EvaluatorInfo]:
@@ -44,32 +44,23 @@ class EvaluatorService:
         logger.info("Fetching evaluators from RootSignals API...")
 
         try:
-            evaluators_list = self.async_client.evaluators.alist()
-
-            # Trim down upstream response for better use with llms
-            evaluators_data = [
-                EvaluatorInfo(
-                    id=evaluator.id,
-                    name=evaluator.name,
-                    created_at=evaluator.created_at.isoformat()
-                    if evaluator.created_at
-                    else "1970-01-01T00:00:00Z",
-                    intent=getattr(evaluator.objective, "intent", None)
-                    if hasattr(evaluator, "objective")
-                    else None,
-                    requires_contexts=evaluator.requires_contexts,
-                    requires_expected_output=evaluator.requires_expected_output,
-                )
-                async for evaluator in evaluators_list
-            ]
+            evaluators_data = await self.async_client.list_evaluators()
 
             total = len(evaluators_data)
             logger.info(f"Retrieved {total} evaluators from RootSignals API")
 
             return evaluators_data
 
-        except Exception as e:
+        except RootSignalsAPIError as e:
             logger.error(f"Failed to fetch evaluators from API: {e}", exc_info=settings.debug)
+            raise RuntimeError(f"Cannot fetch evaluators: {str(e)}") from e
+        except ResponseValidationError as e:
+            logger.error(f"Response validation error: {e}", exc_info=settings.debug)
+            if e.response_data:
+                logger.debug(f"Response data: {e.response_data}")
+            raise RuntimeError(f"Invalid evaluators response: {str(e)}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error fetching evaluators: {e}", exc_info=settings.debug)
             raise RuntimeError(f"Cannot fetch evaluators: {str(e)}") from e
 
     async def list_evaluators(self) -> EvaluatorsListResponse:
@@ -116,15 +107,21 @@ class EvaluatorService:
             EvaluationResponse: The evaluation results.
         """
         try:
-            evaluators_api = self.async_client.evaluators
-
-            result: EvaluatorExecutionResult = await evaluators_api.arun(
+            result = await self.async_client.run_evaluator(
                 evaluator_id=request.evaluator_id,
                 request=request.request,
                 response=request.response,
             )
 
-            return EvaluationResponse(**result.model_dump(exclude_none=True))
+            return result
+        except RootSignalsAPIError as e:
+            logger.error(f"API error running evaluation: {e}", exc_info=settings.debug)
+            raise RuntimeError(f"Failed to run evaluation: {str(e)}") from e
+        except ResponseValidationError as e:
+            logger.error(f"Response validation error: {e}", exc_info=settings.debug)
+            if e.response_data:
+                logger.debug(f"Response data: {e.response_data}")
+            raise RuntimeError(f"Invalid evaluation response: {str(e)}") from e
         except Exception as e:
             logger.error(f"Error running evaluation: {e}", exc_info=settings.debug)
             raise RuntimeError(f"Failed to run evaluation: {str(e)}") from e
@@ -142,16 +139,23 @@ class EvaluatorService:
             EvaluationResponse: The evaluation results.
         """
         try:
-            evaluators_api = self.async_client.evaluators
             logger.debug(f"Running RAG evaluation with contexts: {request.contexts}")
-            result: EvaluatorExecutionResult = await evaluators_api.arun(
+            result = await self.async_client.run_evaluator(
                 evaluator_id=request.evaluator_id,
                 request=request.request,
                 response=request.response,
                 contexts=request.contexts,
             )
 
-            return EvaluationResponse(**result.model_dump(exclude_none=True))
+            return result
+        except RootSignalsAPIError as e:
+            logger.error(f"API error running RAG evaluation: {e}", exc_info=settings.debug)
+            raise RuntimeError(f"Failed to run RAG evaluation: {str(e)}") from e
+        except ResponseValidationError as e:
+            logger.error(f"Response validation error: {e}", exc_info=settings.debug)
+            if e.response_data:
+                logger.debug(f"Response data: {e.response_data}")
+            raise RuntimeError(f"Invalid RAG evaluation response: {str(e)}") from e
         except Exception as e:
             logger.error(f"Error running RAG evaluation: {e}", exc_info=settings.debug)
             raise RuntimeError(f"Failed to run RAG evaluation: {str(e)}") from e
