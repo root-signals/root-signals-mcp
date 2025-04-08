@@ -656,7 +656,7 @@ wheels = [
 
 [[package]]
 name = "root-mcp-server"
-version = "0.1.0"
+version = "20250408.post1"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },

@@ -4,7 +4,6 @@ This module handles the integration with RootSignals evaluators.
 """
 
 import logging
-from typing import Any
 
 from root import RootSignals
 from root.generated.openapi_aclient.models.evaluator_execution_result import (
@@ -33,13 +32,11 @@ class EvaluatorService:
             run_async=True,
         )
 
-        self.evaluators_cache: dict[str, Any] | None = None
-
-    async def initialize(self) -> dict[str, Any]:
-        """Initialize and cache available evaluators.
+    async def fetch_evaluators(self) -> list[EvaluatorInfo]:
+        """Fetch available evaluators from the API.
 
         Returns:
-            Dict[str, Any]: The evaluators data from RootSignals API.
+            List[EvaluatorInfo]: List of evaluator information.
 
         Raises:
             RuntimeError: If evaluators cannot be retrieved from the API.
@@ -69,16 +66,11 @@ class EvaluatorService:
             total = len(evaluators_data)
             logger.info(f"Retrieved {total} evaluators from RootSignals API")
 
-            self.evaluators_cache = {
-                "evaluators": evaluators_data,
-                "total": total,
-            }
-
-            return self.evaluators_cache
+            return evaluators_data
 
         except Exception as e:
             logger.error(f"Failed to fetch evaluators from API: {e}", exc_info=settings.debug)
-            raise RuntimeError(f"Cannot initialize evaluator service: {str(e)}") from e
+            raise RuntimeError(f"Cannot fetch evaluators: {str(e)}") from e
 
     async def list_evaluators(self) -> EvaluatorsListResponse:
         """List all available evaluators.
@@ -86,13 +78,12 @@ class EvaluatorService:
         Returns:
             EvaluatorsListResponse: A response containing all available evaluators.
         """
-        if not self.evaluators_cache:
-            await self.initialize()
+        evaluators = await self.fetch_evaluators()
 
         return EvaluatorsListResponse(
-            evaluators=self.evaluators_cache["evaluators"],
-            count=len(self.evaluators_cache["evaluators"]),
-            total=self.evaluators_cache["total"],
+            evaluators=evaluators,
+            count=len(evaluators),
+            total=len(evaluators),
         )
 
     async def get_evaluator_by_id(self, evaluator_id: str) -> EvaluatorInfo | None:
@@ -104,10 +95,9 @@ class EvaluatorService:
         Returns:
             Optional[EvaluatorInfo]: The evaluator details or None if not found.
         """
-        if not self.evaluators_cache:
-            await self.initialize()
+        evaluators = await self.fetch_evaluators()
 
-        for evaluator in self.evaluators_cache["evaluators"]:
+        for evaluator in evaluators:
             if evaluator.id == evaluator_id:
                 return evaluator
 
