@@ -112,9 +112,9 @@ class BaseRootSignalsModel(BaseModel):
     """
 
     model_config = {
-        "extra": "ignore",  # Ignore extra fields in API responses
-        "strict": False,  # Allow type coercion for flexibility
-        "validate_assignment": True,  # Validate when values are assigned
+        "extra": "ignore",
+        "strict": True,
+        "validate_assignment": True,
     }
 
 

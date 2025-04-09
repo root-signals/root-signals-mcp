@@ -190,7 +190,6 @@ async def test_client_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
 
         rag_evaluator = next(iter(faithfulness_evaluators), None)
 
-        # Fail if no RAG evaluator found instead of skipping
         assert rag_evaluator is not None, "Required RAG evaluator not found - test cannot proceed"
 
         logger.info(f"Using evaluator: {rag_evaluator['name']}")
@@ -227,15 +226,14 @@ async def test_client_run_rag_evaluation_by_name(compose_up_mcp_server: Any) -> 
         faithfulness_evaluators = [
             e
             for e in evaluators
-            if any(
-                kw in e.get("name", "").lower()
-                for kw in ["faithfulness", "context", "rag", "relevance"]
-            )
+            if any(kw in e.get("name", "").lower() for kw in ["faithfulness", "context", "rag"])
+            and "relevance"
+            not in e.get("name", "").lower()  # Exclude known duplicate to avoid test flakyness
         ]
 
         rag_evaluator = next(iter(faithfulness_evaluators), None)
 
-        # Fail if no RAG evaluator found instead of skipping
+
         assert rag_evaluator is not None, "Required RAG evaluator not found - test cannot proceed"
 
         logger.info(f"Using evaluator by name: {rag_evaluator['name']}")

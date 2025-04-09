@@ -357,8 +357,10 @@ async def test_root_client_schema_compatibility__detects_api_schema_changes() ->
             )
 
         error_message = str(excinfo.value)
-        assert "Missing required field" in error_message, "Expected missing field error"
-        assert "evaluator_name" in error_message, "Expected evaluator_name field to be missing"
+        assert "Invalid evaluation response format" in error_message, (
+            "Expected validation error message"
+        )
+        assert "evaluator_name" in error_message.lower(), "Error should reference the missing field"
 
         mock_request.return_value = {
             "result": {
@@ -373,8 +375,10 @@ async def test_root_client_schema_compatibility__detects_api_schema_changes() ->
             )
 
         error_message = str(excinfo.value)
-        assert "Missing required field" in error_message, "Expected missing field error"
-        assert "score" in error_message, "Expected score field to be missing"
+        assert "Invalid evaluation response format" in error_message, (
+            "Expected validation error message"
+        )
+        assert "score" in error_message.lower(), "Error should reference the missing field"
 
         mock_request.return_value = {}
 

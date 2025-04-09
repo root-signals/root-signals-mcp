@@ -158,7 +158,9 @@ class RootSignalsApiClient:
         """
         max_to_fetch = max_count if max_count is not None else settings.max_evaluators
         evaluators_raw: list[dict[str, Any]] = []
-        next_page_url = "/v1/evaluators"
+
+        page_size = min(max_to_fetch, 40)
+        next_page_url = f"/v1/evaluators?page_size={page_size}"
 
         while next_page_url and len(evaluators_raw) < max_to_fetch:
             if next_page_url.startswith("http"):
@@ -282,47 +284,20 @@ class RootSignalsApiClient:
             "POST", f"/v1/evaluators/execute/{evaluator_id}/", json_data=payload
         )
 
-        if not isinstance(response_data, dict):
-            raise ResponseValidationError(
-                f"Expected response to be a dict, got {type(response_data).__name__}",
-                response_data,
-            )
-
         logger.info(f"Raw evaluation response: {response_data}")
 
-        result_data = response_data.get("result", response_data)
-        if not isinstance(result_data, dict):
-            raise ResponseValidationError(
-                "Expected result data to be a dictionary",
-                result_data,
-            )
-
         try:
-            evaluator_name = result_data["evaluator_name"]
-            score = result_data["score"]
-
-            if not isinstance(score, int | float):
-                raise ResponseValidationError(
-                    f"Expected 'score' to be a number, got {type(score).__name__}",
-                    result_data,
-                )
-
-            justification = result_data.get("justification")
-            execution_log_id = result_data.get("execution_log_id")
-            cost = result_data.get("cost")
-
-            return EvaluationResponse(
-                evaluator_name=evaluator_name,
-                score=score,
-                justification=justification,
-                execution_log_id=execution_log_id,
-                cost=cost,
+            result_data = (
+                response_data.get("result", response_data)
+                if isinstance(response_data, dict)
+                else response_data
             )
-        except KeyError as e:
-            missing_field = str(e).strip("'")
+
+            return EvaluationResponse.model_validate(result_data)
+        except ValueError as e:
             raise ResponseValidationError(
-                f"Missing required field in evaluation response: '{missing_field}'",
-                result_data,
+                f"Invalid evaluation response format: {str(e)}",
+                response_data,
             ) from e
 
     async def run_evaluator_by_name(
@@ -365,45 +340,21 @@ class RootSignalsApiClient:
             "POST", "/v1/evaluators/execute/by-name/", params=params, json_data=payload
         )
 
-        if not isinstance(response_data, dict):
-            raise ResponseValidationError(
-                f"Expected response to be a dict, got {type(response_data).__name__}",
-                response_data,
-            )
-
         logger.info(f"Raw evaluation by name response: {response_data}")
 
-        result_data = response_data.get("result", response_data)
-        if not isinstance(result_data, dict):
-            raise ResponseValidationError(
-                "Expected result data to be a dictionary",
-                result_data,
-            )
-
         try:
-            evaluator_name = result_data["evaluator_name"]
-            score = result_data["score"]
-
-            if not isinstance(score, int | float):
-                raise ResponseValidationError(
-                    f"Expected 'score' to be a number, got {type(score).__name__}",
-                    result_data,
-                )
-
-            justification = result_data.get("justification")
-            execution_log_id = result_data.get("execution_log_id")
-            cost = result_data.get("cost")
-
-            return EvaluationResponse(
-                evaluator_name=evaluator_name,
-                score=score,
-                justification=justification,
-                execution_log_id=execution_log_id,
-                cost=cost,
+            # Extract the result field if it exists, otherwise use the whole response
+            result_data = (
+                response_data.get("result", response_data)
+                if isinstance(response_data, dict)
+                else response_data
             )
-        except KeyError as e:
-            missing_field = str(e).strip("'")
+
+            # Let Pydantic handle validation through the model
+            return EvaluationResponse.model_validate(result_data)
+        except ValueError as e:
+            # Pydantic will raise ValueError for validation errors
             raise ResponseValidationError(
-                f"Missing required field in evaluation response: '{missing_field}'",
-                result_data,
+                f"Invalid evaluation response format: {str(e)}",
+                response_data,
             ) from e

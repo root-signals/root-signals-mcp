@@ -304,6 +304,16 @@ async def test_api_response_validation_error() -> None:
         )
         assert "got str" in error_message.lower(), "Error should mention the actual type received"
 
+        mock_request.return_value = "not a valid format"
+        with pytest.raises(ResponseValidationError) as excinfo:
+            await client.run_evaluator(
+                evaluator_id="test-id", request="Test request", response="Test response"
+            )
+        error_message = str(excinfo.value)
+        assert "Invalid evaluation response format" in error_message, (
+            "Should indicate format validation error"
+        )
+
 
 @pytest.mark.asyncio
 async def test_evaluator_missing_fields() -> None:
@@ -359,10 +369,11 @@ async def test_evaluator_missing_fields() -> None:
 async def test_root_client_schema_compatibility__detects_api_schema_changes() -> None:
     """Test that our schema models detect changes in the API response format."""
     with patch.object(RootSignalsApiClient, "_make_request") as mock_request:
+        # Case 1: Missing required field (evaluator_name)
         mock_request.return_value = {
             "result": {
-                # Missing evaluator_name field
-                "score": 0.9
+                "score": 0.9,
+                "justification": "Some justification",
             }
         }
 
@@ -373,14 +384,17 @@ async def test_root_client_schema_compatibility__detects_api_schema_changes() ->
             )
 
         error_message = str(excinfo.value)
-        assert "Missing required field" in error_message, "Error should mention missing field"
-        assert "evaluator_name" in error_message, "Error should specify which field is missing"
+        assert "Invalid evaluation response format" in error_message, (
+            "Should show validation error message"
+        )
+        # The exact error format will come from Pydantic now
+        assert "evaluator_name" in error_message.lower(), "Should mention the missing field"
 
-        # Test missing score (another required field)
+        # Case 2: Missing another required field (score)
         mock_request.return_value = {
             "result": {
                 "evaluator_name": "Test Evaluator",
-                # Missing score field (required)
+                "justification": "Some justification",
             }
         }
 
@@ -390,8 +404,22 @@ async def test_root_client_schema_compatibility__detects_api_schema_changes() ->
             )
 
         error_message = str(excinfo.value)
-        assert "Missing required field" in error_message, "Error should mention missing field"
-        assert "score" in error_message, "Error should specify which field is missing"
+        assert "Invalid evaluation response format" in error_message, (
+            "Should show validation error message"
+        )
+        assert "score" in error_message.lower(), "Should mention the missing field"
+
+        # Case 3: Empty response
+        mock_request.return_value = {}
+
+        with pytest.raises(ResponseValidationError) as excinfo:
+            await client.run_evaluator(
+                evaluator_id="test-id", request="Test request", response="Test response"
+            )
+
+        assert "Invalid evaluation response format" in str(excinfo.value), (
+            "Should show validation error for empty response"
+        )
 
 
 @pytest.mark.asyncio
@@ -414,5 +442,6 @@ async def test_root_client_run_evaluator__handles_unexpected_response_fields() -
         assert result.evaluator_name == "Test", "Required field should be correctly parsed"
         assert result.score == 0.9, "Required field should be correctly parsed"
 
+        # Extra fields should be ignored by Pydantic's model_validate
         assert not hasattr(result, "new_field_not_in_schema"), "Extra fields should be ignored"
         assert not hasattr(result, "another_new_field"), "Extra fields should be ignored"
