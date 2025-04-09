@@ -44,10 +44,26 @@ to evaluate responses against various quality criteria.
 The server exposes the following tools:
 
 1. `list_evaluators` - Lists all available evaluators from Root Signals
-2. `run_evaluation` - Runs a standard evaluation using a specified evaluator
-3. `run_rag_evaluation` - Runs a RAG evaluation with contexts using a specified evaluator
+2. `run_evaluation` - Runs a standard evaluation using a specified evaluator ID
+3. `run_evaluation_by_name` - Runs a standard evaluation using a specified evaluator name
+4. `run_rag_evaluation` - Runs a RAG evaluation with contexts using a specified evaluator ID
+5. `run_rag_evaluation_by_name` - Runs a RAG evaluation with contexts using a specified evaluator name
 
-## Usage
+## Limitations
+
+### Network Resilience
+
+- The current implementation does *not* include backoff and retry mechanisms for API calls:  
+  - No Exponential backoff for failed requests
+  - No Automatic retries for transient errors
+  - No Request throttling for rate limit compliance
+
+### Bundled MCP client is for reference only
+
+This repo includes a `root_mcp_server.client.RootSignalsMCPClient` for reference with no support guarantees, unlike the server.
+We recommend your own or any of the official [MCP clients](https://modelcontextprotocol.io/clients) for production use.
+
+## How to use this server
 
 #### 1. Get Your API Key
 [Sign up & create a key](https://app.rootsignals.ai/settings/api-keys) or [generate a temporary key](https://app.rootsignals.ai/demo-user)
@@ -84,14 +100,56 @@ From all other clients that support sse transport - add the server to your confi
 }
 ```
 
+## Usage Examples
 
-## How to use this server
+### Using the MCP reference client directly from code
 
-This implementation is compatible with any MCP client that can do tool calls. A list is on the official page [MCP clients](https://modelcontextprotocol.io/clients)
+```python
+from root_mcp_server.client import RootSignalsMCPClient
 
-To help integrate the MCP into programmatic workflows from your code, we also include an [example client](src/root_mcp_server/client.py)
-that demonstrates how to call our listing and evaluation tools directly, in contrast to having an agent doing the calls. 
-We use this client in our own [tests here](src/root_mcp_server/test/test_client.py)
+async def main():
+    mcp_client = RootSignalsMCPClient()
+    
+    try:
+        await mcp_client.connect()
+        
+        evaluators = await mcp_client.list_evaluators()
+        print(f"Found {len(evaluators)} evaluators")
+        
+        result = await mcp_client.run_evaluation(
+            evaluator_id="eval-123456789",
+            request="What is the capital of France?",
+            response="The capital of France is Paris."
+        )
+        print(f"Evaluation score: {result['score']}")
+        
+        result = await mcp_client.run_evaluation_by_name(
+            evaluator_name="Clarity",
+            request="What is the capital of France?",
+            response="The capital of France is Paris."
+        )
+        print(f"Evaluation by name score: {result['score']}")
+        
+        result = await mcp_client.run_rag_evaluation(
+            evaluator_id="eval-987654321",
+            request="What is the capital of France?",
+            response="The capital of France is Paris.",
+            contexts=["Paris is the capital of France.", "France is a country in Europe."]
+        )
+        print(f"RAG evaluation score: {result['score']}")
+        
+        result = await mcp_client.run_rag_evaluation_by_name(
+            evaluator_name="Faithfulness",
+            request="What is the capital of France?",
+            response="The capital of France is Paris.",
+            contexts=["Paris is the capital of France.", "France is a country in Europe."]
+        )
+        print(f"RAG evaluation by name score: {result['score']}")
+        
+    finally:
+        await mcp_client.disconnect()
+```
+
 
 ## How to contribute
 

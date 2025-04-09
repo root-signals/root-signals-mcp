@@ -52,6 +52,10 @@ class Settings(BaseSettings):
         default=30.0,
         description="Timeout in seconds for RootSignals API requests",
     )
+    max_evaluators: int = Field(
+        default=40,
+        description="Maximum number of evaluators to fetch",
+    )
 
     version: str = Field(
         default_factory=get_package_version,
@@ -74,7 +78,6 @@ class Settings(BaseSettings):
     env: str = Field(
         default="development",
         description="Environment identifier (development, staging, production)",
-        alias="ENV",
     )
 
     model_config = SettingsConfigDict(

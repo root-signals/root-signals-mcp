@@ -21,12 +21,16 @@ from starlette.routing import Mount, Route
 
 from root_mcp_server.evaluator import EvaluatorService
 from root_mcp_server.schema import (
-    EvaluationRequest,
+    EvaluationRequestByID,
+    EvaluationRequestByName,
     EvaluationResponse,
     EvaluatorsListResponse,
     ListEvaluatorsRequest,
+    RAGEvaluationByNameRequest,
     RAGEvaluationRequest,
+    RunEvaluationByNameToolRequest,
     RunEvaluationToolRequest,
+    RunRAGEvaluationByNameToolRequest,
     RunRAGEvaluationToolRequest,
     UnknownToolRequest,
 )
@@ -59,6 +63,8 @@ class SSEMCPServer:
             "list_evaluators": self._handle_list_evaluators,
             "run_evaluation": self._handle_run_evaluation,
             "run_rag_evaluation": self._handle_run_rag_evaluation,
+            "run_evaluation_by_name": self._handle_run_evaluation_by_name,
+            "run_rag_evaluation_by_name": self._handle_run_rag_evaluation_by_name,
         }
 
     async def list_tools(self) -> list[Tool]:
@@ -75,13 +81,23 @@ class SSEMCPServer:
             ),
             Tool(
                 name="run_evaluation",
-                description="Run a standard evaluation using a RootSignals evaluator",
-                inputSchema=EvaluationRequest.model_json_schema(),
+                description="Run a standard evaluation using a RootSignals evaluator by ID",
+                inputSchema=EvaluationRequestByID.model_json_schema(),
             ),
             Tool(
                 name="run_rag_evaluation",
-                description="Run a RAG evaluation with contexts using a RootSignals evaluator",
+                description="Run a RAG evaluation with contexts using a RootSignals evaluator by ID",
                 inputSchema=RAGEvaluationRequest.model_json_schema(),
+            ),
+            Tool(
+                name="run_evaluation_by_name",
+                description="Run a standard evaluation using a RootSignals evaluator by name instead of ID",
+                inputSchema=EvaluationRequestByName.model_json_schema(),
+            ),
+            Tool(
+                name="run_rag_evaluation_by_name",
+                description="Run a RAG evaluation with contexts using a RootSignals evaluator by name instead of ID",
+                inputSchema=RAGEvaluationByNameRequest.model_json_schema(),
             ),
         ]
 
@@ -101,6 +117,10 @@ class SSEMCPServer:
                 request_model = RunEvaluationToolRequest(**arguments)
             elif name == "run_rag_evaluation":
                 request_model = RunRAGEvaluationToolRequest(**arguments)
+            elif name == "run_evaluation_by_name":
+                request_model = RunEvaluationByNameToolRequest(**arguments)
+            elif name == "run_rag_evaluation_by_name":
+                request_model = RunRAGEvaluationByNameToolRequest(**arguments)
             else:
                 request_model = UnknownToolRequest(**arguments)
 
@@ -126,11 +146,28 @@ class SSEMCPServer:
         """Handle run_evaluation tool call."""
         logger.debug(f"Handling run_evaluation request for evaluator {params.evaluator_id}")
 
-        eval_request = EvaluationRequest(
+        eval_request = EvaluationRequestByID(
             evaluator_id=params.evaluator_id, request=params.request, response=params.response
         )
 
         return await self.evaluator_service.run_evaluation(eval_request)
+
+    async def _handle_run_evaluation_by_name(
+        self, params: RunEvaluationByNameToolRequest
+    ) -> EvaluationResponse:
+        """Handle run_evaluation_by_name tool call."""
+        logger.debug(
+            f"Handling run_evaluation_by_name request for evaluator {params.evaluator_name}"
+        )
+
+        # Convert evaluator_name to evaluator_id for compatibility with existing service
+        eval_request = EvaluationRequestByName(
+            evaluator_name=params.evaluator_name,
+            request=params.request,
+            response=params.response,
+        )
+
+        return await self.evaluator_service.run_evaluation_by_name(eval_request)
 
     async def _handle_run_rag_evaluation(
         self, params: RunRAGEvaluationToolRequest
@@ -146,6 +183,23 @@ class SSEMCPServer:
         )
 
         return await self.evaluator_service.run_rag_evaluation(rag_request)
+
+    async def _handle_run_rag_evaluation_by_name(
+        self, params: RunRAGEvaluationByNameToolRequest
+    ) -> EvaluationResponse:
+        """Handle run_rag_evaluation_by_name tool call."""
+        logger.debug(
+            f"Handling run_rag_evaluation_by_name request for evaluator {params.evaluator_name}"
+        )
+
+        rag_request = RAGEvaluationByNameRequest(
+            evaluator_name=params.evaluator_name,
+            request=params.request,
+            response=params.response,
+            contexts=params.contexts,
+        )
+
+        return await self.evaluator_service.run_rag_evaluation_by_name(rag_request)
 
 
 def create_app(server: SSEMCPServer) -> Starlette:

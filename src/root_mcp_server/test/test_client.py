@@ -65,7 +65,13 @@ async def test_client_list_tools(compose_up_mcp_server: Any) -> None:
         tool_names = [tool["name"] for tool in tools]
         logger.info(f"Found tools: {tool_names}")
 
-        expected_tools = {"list_evaluators", "run_evaluation", "run_rag_evaluation"}
+        expected_tools = {
+            "list_evaluators",
+            "run_evaluation",
+            "run_rag_evaluation",
+            "run_evaluation_by_name",
+            "run_rag_evaluation_by_name",
+        }
         assert expected_tools.issubset(set(tool_names)), (
             f"Missing expected tools. Found: {tool_names}"
         )
@@ -116,7 +122,7 @@ async def test_client_run_evaluation(compose_up_mcp_server: Any) -> None:
 
         logger.info(f"Using evaluator: {standard_evaluator['name']}")
 
-        result = await client.run_evaluation(
+        result = await client.run_evaluation_by_id(
             evaluator_id=standard_evaluator["id"],
             request="What is the capital of France?",
             response="The capital of France is Paris, which is known as the City of Light.",
@@ -125,6 +131,39 @@ async def test_client_run_evaluation(compose_up_mcp_server: Any) -> None:
         assert "score" in result
         assert "justification" in result
         logger.info(f"Evaluation score: {result['score']}")
+    finally:
+        await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_client_run_evaluation_by_name(compose_up_mcp_server: Any) -> None:
+    """Test client run_evaluation_by_name method with a real server."""
+    logger.info("Testing run_evaluation_by_name")
+    client = RootSignalsMCPClient()
+
+    try:
+        await client.connect()
+
+        evaluators = await client.list_evaluators()
+
+        standard_evaluator = next(
+            (e for e in evaluators if not e.get("requires_contexts", False)), None
+        )
+
+        assert standard_evaluator is not None, "No standard evaluator found"
+
+        logger.info(f"Using evaluator by name: {standard_evaluator['name']}")
+
+        result = await client.run_evaluation_by_name(
+            evaluator_name=standard_evaluator["name"],
+            request="What is the capital of France?",
+            response="The capital of France is Paris, which is known as the City of Light.",
+        )
+
+        assert "score" in result, "Result should contain a score"
+        assert isinstance(result["score"], int | float), "Score should be numeric"
+        assert "justification" in result, "Result should contain a justification"
+        logger.info(f"Evaluation by name score: {result['score']}")
     finally:
         await client.disconnect()
 
@@ -151,12 +190,12 @@ async def test_client_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
 
         rag_evaluator = next(iter(faithfulness_evaluators), None)
 
-        if not rag_evaluator:
-            pytest.skip("No RAG evaluator found")
+        # Fail if no RAG evaluator found instead of skipping
+        assert rag_evaluator is not None, "Required RAG evaluator not found - test cannot proceed"
 
         logger.info(f"Using evaluator: {rag_evaluator['name']}")
 
-        result = await client.run_rag_evaluation(
+        result = await client.run_rag_evaluation_by_id(
             evaluator_id=rag_evaluator["id"],
             request="What is the capital of France?",
             response="The capital of France is Paris, which is known as the City of Light.",
@@ -166,8 +205,54 @@ async def test_client_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
             ],
         )
 
-        assert "score" in result
-        assert "justification" in result
+        assert "score" in result, "Result should contain a score"
+        assert isinstance(result["score"], int | float), "Score should be numeric"
+        assert "justification" in result, "Result should contain a justification"
         logger.info(f"RAG evaluation score: {result['score']}")
+    finally:
+        await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_client_run_rag_evaluation_by_name(compose_up_mcp_server: Any) -> None:
+    """Test client run_rag_evaluation_by_name method with a real server."""
+    logger.info("Testing run_rag_evaluation_by_name")
+    client = RootSignalsMCPClient()
+
+    try:
+        await client.connect()
+
+        evaluators = await client.list_evaluators()
+
+        faithfulness_evaluators = [
+            e
+            for e in evaluators
+            if any(
+                kw in e.get("name", "").lower()
+                for kw in ["faithfulness", "context", "rag", "relevance"]
+            )
+        ]
+
+        rag_evaluator = next(iter(faithfulness_evaluators), None)
+
+        # Fail if no RAG evaluator found instead of skipping
+        assert rag_evaluator is not None, "Required RAG evaluator not found - test cannot proceed"
+
+        logger.info(f"Using evaluator by name: {rag_evaluator['name']}")
+
+        result = await client.run_rag_evaluation_by_name(
+            evaluator_name=rag_evaluator["name"],
+            request="What is the capital of France?",
+            response="The capital of France is Paris, which is known as the City of Light.",
+            contexts=[
+                "Paris is the capital and most populous city of France. It is located on the Seine River.",
+                "France is a country in Western Europe with several overseas territories and regions.",
+            ],
+        )
+
+        assert "score" in result, "Result should contain a score"
+        assert isinstance(result["score"], int | float), "Score should be numeric"
+        assert "justification" in result, "Result should contain a justification"
+        logger.info(f"RAG evaluation by name score: {result['score']}")
     finally:
         await client.disconnect()

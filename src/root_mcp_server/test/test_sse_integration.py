@@ -9,10 +9,12 @@ import pytest
 from root_mcp_server.client import RootSignalsMCPClient
 from root_mcp_server.evaluator import EvaluatorService
 from root_mcp_server.schema import (
-    EvaluationRequest,
+    EvaluationRequestByID,
+    EvaluationRequestByName,
     EvaluationResponse,
     EvaluatorInfo,
     EvaluatorsListResponse,
+    RAGEvaluationByNameRequest,
     RAGEvaluationRequest,
 )
 
@@ -37,10 +39,8 @@ async def test_list_tools(compose_up_mcp_server: Any) -> None:
     try:
         await client.connect()
 
-        # List tools
         tools: list[dict[str, Any]] = await client.list_tools()
 
-        # Verify expected tools are available
         tool_names: set[str] = {tool["name"] for tool in tools}
         expected_tools: set[str] = {"list_evaluators", "run_evaluation", "run_rag_evaluation"}
 
@@ -59,10 +59,8 @@ async def test_list_evaluators(compose_up_mcp_server: Any) -> None:
     try:
         await client.connect()
 
-        # List evaluators
         evaluators: list[dict[str, Any]] = await client.list_evaluators()
 
-        # Verify evaluators are available
         assert len(evaluators) > 0, "No evaluators found"
         logger.info(f"Found {len(evaluators)} evaluators")
     finally:
@@ -79,8 +77,6 @@ async def test_run_evaluation(compose_up_mcp_server: Any) -> None:
         await client.connect()
         evaluators: list[dict[str, Any]] = await client.list_evaluators()
 
-        # Try to find Clarity evaluator first as it's a standard non-context evaluator
-        # Then fall back to any non-context evaluator if Clarity isn't available
         clarity_evaluator: dict[str, Any] | None = next(
             (e for e in evaluators if e.get("name", "") == "Clarity"),
             next((e for e in evaluators if not e.get("requires_contexts", False)), None),
@@ -91,7 +87,7 @@ async def test_run_evaluation(compose_up_mcp_server: Any) -> None:
 
         logger.info(f"Using evaluator: {clarity_evaluator['name']}")
 
-        result: dict[str, Any] = await client.run_evaluation(
+        result: dict[str, Any] = await client.run_evaluation_by_id(
             evaluator_id=clarity_evaluator["id"],
             request="What is the capital of France?",
             response="The capital of France is Paris, which is known as the City of Light.",
@@ -114,8 +110,6 @@ async def test_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
         await client.connect()
         evaluators: list[dict[str, Any]] = await client.list_evaluators()
 
-        # Try to find Faithfulness evaluator first as it's a standard RAG evaluator
-        # Then fall back to any context-requiring evaluator if Faithfulness isn't available
         faithfulness_evaluator: dict[str, Any] | None = next(
             (e for e in evaluators if e.get("name", "") == "Faithfulness"),
             next((e for e in evaluators if e.get("requires_contexts", False)), None),
@@ -125,7 +119,7 @@ async def test_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
 
         logger.info(f"Using evaluator: {faithfulness_evaluator['name']}")
 
-        result: dict[str, Any] = await client.run_rag_evaluation(
+        result: dict[str, Any] = await client.run_rag_evaluation_by_id(
             evaluator_id=faithfulness_evaluator["id"],
             request="What is the capital of France?",
             response="The capital of France is Paris, which is known as the City of Light.",
@@ -143,101 +137,170 @@ async def test_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
 
 
 @pytest.mark.asyncio
-async def test_evaluator_service_integration__standard_evaluation(
+async def test_evaluator_service_integration__standard_evaluation_by_id(
     compose_up_mcp_server: Any,
 ) -> None:
-    """Test the standard evaluation functionality directly through the evaluator service.
-
-    This tests the internal service API rather than the HTTP/SSE interface.
-    """
+    """Test the standard evaluation by ID functionality through the evaluator service."""
     logger.info("Initializing EvaluatorService")
     service: EvaluatorService = EvaluatorService()
 
-    try:
-        evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
-        assert evaluators_response.count > 0, "No evaluators returned"
-        assert len(evaluators_response.evaluators) > 0, "No evaluator objects returned"
+    evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
+    assert evaluators_response.count > 0, "No evaluators returned from the service"
+    assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
 
-        # Find a standard evaluator (one that doesn't require contexts)
-        standard_evaluator: EvaluatorInfo | None = next(
-            (
-                e
-                for e in evaluators_response.evaluators
-                if not getattr(e, "requires_contexts", False)
-            ),
-            None,
-        )
+    standard_evaluator: EvaluatorInfo | None = next(
+        (e for e in evaluators_response.evaluators if not getattr(e, "requires_contexts", False)),
+        None,
+    )
 
-        assert standard_evaluator is not None, "No standard evaluator found"
+    assert standard_evaluator is not None, (
+        "No standard evaluator found - this is a test prerequisite"
+    )
 
-        logger.info(f"Using standard evaluator: {standard_evaluator.name}")
+    logger.info(
+        f"Using standard evaluator by ID: {standard_evaluator.name} ({standard_evaluator.id})"
+    )
 
-        retrieved_evaluator: EvaluatorInfo | None = await service.get_evaluator_by_id(
-            standard_evaluator.id
-        )
-        assert retrieved_evaluator is not None, "Failed to retrieve evaluator by ID"
-        assert retrieved_evaluator.id == standard_evaluator.id, "Retrieved wrong evaluator"
+    retrieved_evaluator: EvaluatorInfo | None = await service.get_evaluator_by_id(
+        standard_evaluator.id
+    )
+    assert retrieved_evaluator is not None, "Failed to retrieve evaluator by ID"
+    assert retrieved_evaluator.id == standard_evaluator.id, (
+        "Retrieved evaluator ID doesn't match requested ID"
+    )
 
-        # Run a standard evaluation
-        eval_request: EvaluationRequest = EvaluationRequest(
-            evaluator_id=standard_evaluator.id,
-            request="What is the capital of France?",
-            response="The capital of France is Paris, which is known as the City of Light.",
-        )
+    eval_request = EvaluationRequestByID(
+        evaluator_id=standard_evaluator.id,
+        request="What is the capital of France?",
+        response="The capital of France is Paris, which is known as the City of Light.",
+    )
 
-        eval_result: EvaluationResponse = await service.run_evaluation(eval_request)
-        assert hasattr(eval_result, "score"), "No score in evaluation response"
-        logger.info(f"Standard evaluation result: score={eval_result.score}")
-
-    except Exception as e:
-        logger.error(f"Standard evaluation test failed: {e}")
-        raise
+    eval_result: EvaluationResponse = await service.run_evaluation(eval_request)
+    assert hasattr(eval_result, "score"), "Evaluation response missing score field"
+    assert isinstance(eval_result.score, float), "Evaluation score should be a float"
+    assert 0 <= eval_result.score <= 1, "Evaluation score should be between 0 and 1"
+    assert eval_result.evaluator_name, "Evaluation response missing evaluator_name field"
+    logger.info(f"Standard evaluation by ID result: score={eval_result.score}")
 
 
 @pytest.mark.asyncio
-async def test_evaluator_service_integration__rag_evaluation(compose_up_mcp_server: Any) -> None:
-    """Test the RAG evaluation functionality directly through the evaluator service.
-
-    This tests the internal service API rather than the HTTP/SSE interface.
-    """
+async def test_evaluator_service_integration__standard_evaluation_by_name(
+    compose_up_mcp_server: Any,
+) -> None:
+    """Test the standard evaluation by name functionality through the evaluator service."""
     logger.info("Initializing EvaluatorService")
     service: EvaluatorService = EvaluatorService()
 
-    try:
-        evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
-        assert evaluators_response.count > 0, "No evaluators returned"
-        assert len(evaluators_response.evaluators) > 0, "No evaluator objects returned"
+    evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
+    assert evaluators_response.count > 0, "No evaluators returned from the service"
+    assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
 
-        # Find a RAG evaluator (one that requires contexts)
-        rag_evaluator: EvaluatorInfo | None = next(
-            (e for e in evaluators_response.evaluators if getattr(e, "requires_contexts", False)),
-            None,
-        )
+    standard_evaluator: EvaluatorInfo | None = next(
+        (e for e in evaluators_response.evaluators if not getattr(e, "requires_contexts", False)),
+        None,
+    )
 
-        assert rag_evaluator is not None, "No RAG evaluator found"
+    assert standard_evaluator is not None, (
+        "No standard evaluator found - this is a test prerequisite"
+    )
 
-        logger.info(f"Using RAG evaluator: {rag_evaluator.name}")
+    logger.info(f"Using standard evaluator by name: {standard_evaluator.name}")
 
-        retrieved_evaluator: EvaluatorInfo | None = await service.get_evaluator_by_id(
-            rag_evaluator.id
-        )
-        assert retrieved_evaluator is not None, "Failed to retrieve evaluator by ID"
-        assert retrieved_evaluator.id == rag_evaluator.id, "Retrieved wrong evaluator"
+    eval_request = EvaluationRequestByName(
+        evaluator_name=standard_evaluator.name,
+        request="What is the capital of France?",
+        response="The capital of France is Paris, which is known as the City of Light.",
+    )
 
-        rag_request: RAGEvaluationRequest = RAGEvaluationRequest(
-            evaluator_id=rag_evaluator.id,
-            request="What is the capital of France?",
-            response="The capital of France is Paris, which is known as the City of Light.",
-            contexts=[
-                "Paris is the capital and most populous city of France.",
-                "France is a country in Western Europe.",
-            ],
-        )
+    eval_result: EvaluationResponse = await service.run_evaluation_by_name(eval_request)
+    assert hasattr(eval_result, "score"), "Evaluation response missing score field"
+    assert isinstance(eval_result.score, float), "Evaluation score should be a float"
+    assert 0 <= eval_result.score <= 1, "Evaluation score should be between 0 and 1"
+    assert eval_result.evaluator_name, "Evaluation response missing evaluator_name field"
+    logger.info(f"Standard evaluation by name result: score={eval_result.score}")
 
-        rag_result: EvaluationResponse = await service.run_rag_evaluation(rag_request)
-        assert hasattr(rag_result, "score"), "No score in RAG evaluation response"
-        logger.info(f"RAG evaluation result: score={rag_result.score}")
 
-    except Exception as e:
-        logger.error(f"RAG evaluation test failed: {e}")
-        raise
+@pytest.mark.asyncio
+async def test_evaluator_service_integration__rag_evaluation_by_id(
+    compose_up_mcp_server: Any,
+) -> None:
+    """Test the RAG evaluation by ID functionality through the evaluator service."""
+    logger.info("Initializing EvaluatorService")
+    service: EvaluatorService = EvaluatorService()
+
+    evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
+    assert evaluators_response.count > 0, "No evaluators returned from the service"
+    assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
+
+    rag_evaluator: EvaluatorInfo | None = next(
+        (e for e in evaluators_response.evaluators if getattr(e, "requires_contexts", False)),
+        None,
+    )
+
+    assert rag_evaluator is not None, "No RAG evaluator found - this is a test prerequisite"
+
+    logger.info(f"Using RAG evaluator by ID: {rag_evaluator.name} ({rag_evaluator.id})")
+
+    retrieved_evaluator: EvaluatorInfo | None = await service.get_evaluator_by_id(rag_evaluator.id)
+    assert retrieved_evaluator is not None, "Failed to retrieve evaluator by ID"
+    assert retrieved_evaluator.id == rag_evaluator.id, (
+        "Retrieved evaluator ID doesn't match requested ID"
+    )
+
+    rag_request: RAGEvaluationRequest = RAGEvaluationRequest(
+        evaluator_id=rag_evaluator.id,
+        request="What is the capital of France?",
+        response="The capital of France is Paris, which is known as the City of Light.",
+        contexts=[
+            "Paris is the capital and most populous city of France.",
+            "France is a country in Western Europe.",
+        ],
+    )
+
+    rag_result: EvaluationResponse = await service.run_rag_evaluation(rag_request)
+    assert hasattr(rag_result, "score"), "RAG evaluation response missing score field"
+    assert isinstance(rag_result.score, float), "RAG evaluation score should be a float"
+    assert 0 <= rag_result.score <= 1, "RAG evaluation score should be between 0 and 1"
+    assert rag_result.evaluator_name, "RAG evaluation response missing evaluator_name field"
+    logger.info(f"RAG evaluation by ID result: score={rag_result.score}")
+
+
+@pytest.mark.asyncio
+async def test_evaluator_service_integration__rag_evaluation_by_name(
+    compose_up_mcp_server: Any,
+) -> None:
+    """Test the RAG evaluation by name functionality through the evaluator service."""
+    logger.info("Initializing EvaluatorService")
+    service: EvaluatorService = EvaluatorService()
+
+    evaluators_response: EvaluatorsListResponse = await service.list_evaluators(
+        max_count=120
+    )  # Workaround to find one in long lists of custom evaluators, until RS-2660 is implemented
+    assert evaluators_response.count > 0, "No evaluators returned from the service"
+    assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
+
+    rag_evaluator: EvaluatorInfo | None = next(
+        (e for e in evaluators_response.evaluators if getattr(e, "requires_contexts", False)),
+        None,
+    )
+
+    assert rag_evaluator is not None, "No RAG evaluator found - this is a test prerequisite"
+
+    logger.info(f"Using RAG evaluator by name: {rag_evaluator.name}")
+
+    rag_request: RAGEvaluationByNameRequest = RAGEvaluationByNameRequest(
+        evaluator_name=rag_evaluator.name,
+        request="What is the capital of France?",
+        response="The capital of France is Paris, which is known as the City of Light.",
+        contexts=[
+            "Paris is the capital and most populous city of France.",
+            "France is a country in Western Europe.",
+        ],
+    )
+
+    rag_result: EvaluationResponse = await service.run_rag_evaluation_by_name(rag_request)
+    assert hasattr(rag_result, "score"), "RAG evaluation response missing score field"
+    assert isinstance(rag_result.score, float), "RAG evaluation score should be a float"
+    assert 0 <= rag_result.score <= 1, "RAG evaluation score should be between 0 and 1"
+    assert rag_result.evaluator_name, "RAG evaluation response missing evaluator_name field"
+    logger.info(f"RAG evaluation by name result: score={rag_result.score}")
