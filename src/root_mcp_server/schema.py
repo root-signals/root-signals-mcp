@@ -14,10 +14,10 @@ V = TypeVar("V")
 class BaseToolRequest(BaseModel):
     """Base class for all tool request models."""
 
-    class Config:
-        """Configure behavior for all request models."""
-
-        extra = "forbid"
+    model_config = {
+        "extra": "forbid",
+        "validate_assignment": True,
+    }
 
 
 class ListEvaluatorsRequest(BaseToolRequest):
@@ -51,8 +51,38 @@ class RunEvaluationToolRequest(BaseToolRequest):
         return v
 
 
+class RunEvaluationByNameToolRequest(BaseToolRequest):
+    """Request model for run_evaluation_by_name tool."""
+
+    evaluator_name: str = Field(..., description="The name of the evaluator to use")
+    request: str = Field(..., description="The user query to evaluate")
+    response: str = Field(..., description="The AI assistant's response to evaluate")
+
+    @field_validator("request")
+    @classmethod
+    def validate_request_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Request cannot be empty")
+        return v
+
+    @field_validator("response")
+    @classmethod
+    def validate_response_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Response cannot be empty")
+        return v
+
+
 class RunRAGEvaluationToolRequest(RunEvaluationToolRequest):
     """Request model for run_rag_evaluation tool."""
+
+    contexts: list[str] = Field(
+        default=[], description="List of required context strings for evaluation"
+    )
+
+
+class RunRAGEvaluationByNameToolRequest(RunEvaluationByNameToolRequest):
+    """Request model for run_rag_evaluation_by_name tool."""
 
     contexts: list[str] = Field(
         default=[], description="List of required context strings for evaluation"
@@ -65,16 +95,58 @@ class UnknownToolRequest(BaseToolRequest):
     This allows for capturing any parameters passed to unknown tools for debugging.
     """
 
-    class Config:
-        """Allow any fields to capture all parameters."""
-
-        extra = "allow"
+    model_config = {
+        "extra": "allow",  # Allow any fields for debugging purposes
+    }
 
 
 ###############################################
 ## Simplified RootSignals Platform API models #
 ###############################################
-class EvaluationRequest(BaseModel):
+class BaseRootSignalsModel(BaseModel):
+    """Base class for all models that interact with the RootSignals API.
+
+    This class sets up handling of schema evolution to:
+    1. Ignore new fields that might be added to the API in the future
+    2. Still fail if expected fields are removed from the API response
+    """
+
+    model_config = {
+        "extra": "ignore",
+        "strict": True,
+        "validate_assignment": True,
+    }
+
+
+class EvaluationRequestByName(BaseRootSignalsModel):
+    """
+    Model for evaluation request parameters.
+
+    this is based on the EvaluatorExecutionRequest model from the RootSignals API
+    but the optional fields require domain knowledge, so we'll reduce the ones we need and
+    be strict about it instead.
+    """
+
+    evaluator_name: str = Field(..., description="The name of the evaluator to use")
+    request: str = Field(..., description="The user query to evaluate")
+    response: str = Field(..., description="The AI assistant's response to evaluate")
+
+    @field_validator("request")
+    @classmethod
+    def validate_request_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Request cannot be empty")
+        return v
+
+    @field_validator("response")
+    @classmethod
+    def validate_response_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Response cannot be empty")
+        return v
+
+
+class EvaluationRequestByID(BaseRootSignalsModel):
     """
     Model for evaluation request parameters.
 
@@ -102,16 +174,25 @@ class EvaluationRequest(BaseModel):
         return v
 
 
-class RAGEvaluationRequest(EvaluationRequest):
+class RAGEvaluationRequest(EvaluationRequestByID):
     """
-    Model for faithfulness evaluation request parameters."""
+    Model for RAG evaluators that require contexts to be sent"""
 
     contexts: list[str] = Field(
         default=[], description="List of required context strings for evaluation"
     )
 
 
-class EvaluationResponse(BaseModel):
+class RAGEvaluationByNameRequest(EvaluationRequestByName):
+    """
+    Model for RAG evaluators that require contexts to be sent"""
+
+    contexts: list[str] = Field(
+        default=[], description="List of required context strings for evaluation"
+    )
+
+
+class EvaluationResponse(BaseRootSignalsModel):
     """
     Model for evaluation response.
 
@@ -126,7 +207,7 @@ class EvaluationResponse(BaseModel):
     cost: float | int | None = Field(None, description="Cost of the evaluation")
 
 
-class EvaluatorInfo(BaseModel):
+class EvaluatorInfo(BaseRootSignalsModel):
     """
     Model for evaluator information.
 
@@ -145,9 +226,34 @@ class EvaluatorInfo(BaseModel):
     )
 
 
-class EvaluatorsListResponse(BaseModel):
+class EvaluatorsListResponse(BaseRootSignalsModel):
     """Model for evaluators list response."""
 
     evaluators: list[EvaluatorInfo] = Field(..., description="List of evaluators")
     count: int = Field(..., description="Number of evaluators returned")
-    total: int = Field(..., description="Total number of evaluators available")
+
+
+class EvaluationByNameRequest(BaseRootSignalsModel):
+    """
+    Model for evaluation by name request parameters.
+
+    Similar to EvaluationRequest but using evaluator name instead of ID.
+    """
+
+    evaluator_name: str = Field(..., description="The name of the evaluator to use")
+    request: str = Field(..., description="The user query to evaluate")
+    response: str = Field(..., description="The AI assistant's response to evaluate")
+
+    @field_validator("request")
+    @classmethod
+    def validate_request_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Request cannot be empty")
+        return v
+
+    @field_validator("response")
+    @classmethod
+    def validate_response_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Response cannot be empty")
+        return v

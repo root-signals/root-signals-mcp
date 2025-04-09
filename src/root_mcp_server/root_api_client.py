@@ -10,7 +10,10 @@ from typing import Any, cast
 
 import httpx
 
-from root_mcp_server.schema import EvaluationResponse, EvaluatorInfo
+from root_mcp_server.schema import (
+    EvaluationResponse,
+    EvaluatorInfo,
+)
 from root_mcp_server.settings import settings
 
 logger = logging.getLogger("root_mcp_server.root_client")
@@ -139,10 +142,13 @@ class RootSignalsApiClient:
 
             except httpx.RequestError as e:
                 logger.error(f"Request error: {str(e)}")
-                raise RootSignalsAPIError(0, f"Connection error: {str(e)}")
+                raise RootSignalsAPIError(0, f"Connection error: {str(e)}") from e
 
-    async def list_evaluators(self) -> list[EvaluatorInfo]:
-        """List all available evaluators.
+    async def list_evaluators(self, max_count: int | None = None) -> list[EvaluatorInfo]:
+        """List all available evaluators with pagination support.
+
+        Args:
+            max_count: Maximum number of evaluators to fetch (defaults to settings.max_evaluators)
 
         Returns:
             List of evaluator information
@@ -150,73 +156,83 @@ class RootSignalsApiClient:
         Raises:
             ResponseValidationError: If a required field is missing in any evaluator
         """
-        response = await self._make_request("GET", "/v1/evaluators")
-
-        logger.info(f"Raw evaluators response: {response}")
-
+        max_to_fetch = max_count if max_count is not None else settings.max_evaluators
         evaluators_raw: list[dict[str, Any]] = []
 
-        if isinstance(response, dict):
-            for key in ["results", "evaluators", "data", "items"]:
-                if key in response and isinstance(response[key], list):
-                    logger.info(f"Found evaluators in '{key}' field")
-                    evaluators_raw = response[key]
-                    break
+        page_size = min(max_to_fetch, 40)
+        next_page_url = f"/v1/evaluators?page_size={page_size}"
+
+        while next_page_url and len(evaluators_raw) < max_to_fetch:
+            if next_page_url.startswith("http"):
+                next_page_url = "/" + next_page_url.split("/", 3)[3]
+
+            response = await self._make_request("GET", next_page_url)
+            logger.debug(f"Raw evaluators response: {response}")
+
+            if isinstance(response, dict):
+                next_page_url = response.get("next", "")
+
+                if "results" in response and isinstance(response["results"], list):
+                    current_page_evaluators = response["results"]
+                    logger.debug(
+                        f"Found {len(current_page_evaluators)} evaluators in 'results' field"
+                    )
+                else:
+                    raise ResponseValidationError(
+                        "Could not find 'results' field in response", response
+                    )
+            elif isinstance(response, list):
+                logger.debug("Response is a direct list of evaluators")
+                current_page_evaluators = response
+                next_page_url = ""
             else:
                 raise ResponseValidationError(
-                    "Could not find evaluators list in response", response
+                    f"Expected response to be a dict or list, got {type(response).__name__}",
+                    cast(dict[str, Any], response),
                 )
-        elif isinstance(response, list):
-            logger.info("Response is a list, using directly")
-            evaluators_raw = response
-        else:
-            raise ResponseValidationError(
-                f"Expected response to be a dict or list, got {type(response).__name__}",
-                cast(dict[str, Any], response),
+
+            evaluators_raw.extend(current_page_evaluators)
+            logger.info(
+                f"Fetched {len(current_page_evaluators)} more evaluators, total now: {len(evaluators_raw)}"
             )
 
-        logger.info(f"Found {len(evaluators_raw)} evaluators")
+            if len(current_page_evaluators) == 0:
+                logger.debug("Received empty page, stopping pagination")
+                break
+
+        if len(evaluators_raw) > max_to_fetch:
+            evaluators_raw = evaluators_raw[:max_to_fetch]
+            logger.debug(f"Trimmed results to {max_to_fetch} evaluators")
+
+        logger.info(f"Found {len(evaluators_raw)} evaluators total after pagination")
 
         evaluators = []
         for i, evaluator_data in enumerate(evaluators_raw):
             try:
                 logger.debug(f"Processing evaluator {i}: {evaluator_data}")
 
-                for field in [
-                    "id",
-                    "name",
-                    "created_at",
-                    "updated_at",
-                    "requires_contexts",
-                    "requires_expected_output",
-                ]:
-                    if field not in evaluator_data:
-                        raise KeyError(field)
+                id_value = evaluator_data["id"]
+                name_value = evaluator_data["name"]
+                created_at = evaluator_data["created_at"]
 
-                if "created_at" in evaluator_data:
-                    created_at = evaluator_data["created_at"]
-                    if isinstance(created_at, datetime):
-                        created_at = created_at.isoformat()
-                else:
-                    raise KeyError("created_at")
+                if isinstance(created_at, datetime):
+                    created_at = created_at.isoformat()
 
                 intent = None
                 if "objective" in evaluator_data and isinstance(evaluator_data["objective"], dict):
                     objective = evaluator_data["objective"]
                     intent = objective.get("intent")
 
-                if "requires_contexts" not in evaluator_data:
-                    raise KeyError("requires_contexts")
-                if "requires_expected_output" not in evaluator_data:
-                    raise KeyError("requires_expected_output")
+                requires_contexts = evaluator_data["requires_contexts"]
+                requires_expected_output = evaluator_data["requires_expected_output"]
 
                 evaluator = EvaluatorInfo(
-                    id=evaluator_data["id"],
-                    name=evaluator_data["name"],
+                    id=id_value,
+                    name=name_value,
                     created_at=created_at,
                     intent=intent,
-                    requires_contexts=evaluator_data["requires_contexts"],
-                    requires_expected_output=evaluator_data["requires_expected_output"],
+                    requires_contexts=bool(requires_contexts),
+                    requires_expected_output=bool(requires_expected_output),
                 )
                 evaluators.append(evaluator)
             except KeyError as e:
@@ -226,7 +242,7 @@ class RootSignalsApiClient:
                 raise ResponseValidationError(
                     f"Evaluator at index {i} missing required field: '{missing_field}'",
                     evaluator_data,
-                )
+                ) from e
 
         return evaluators
 
@@ -268,37 +284,77 @@ class RootSignalsApiClient:
             "POST", f"/v1/evaluators/execute/{evaluator_id}/", json_data=payload
         )
 
-        if not isinstance(response_data, dict):
-            raise ResponseValidationError(
-                f"Expected response to be a dict, got {type(response_data).__name__}", response_data
-            )
-
         logger.info(f"Raw evaluation response: {response_data}")
 
-        if "result" in response_data and isinstance(response_data["result"], dict):
-            result_data = response_data["result"]
-        else:
-            result_data = response_data
-
-        required_fields = ["evaluator_name", "score"]
-        missing_fields = [field for field in required_fields if field not in result_data]
-
-        if missing_fields:
-            raise ResponseValidationError(
-                f"Missing required fields in evaluation response: {', '.join(missing_fields)}",
-                result_data,
+        try:
+            result_data = (
+                response_data.get("result", response_data)
+                if isinstance(response_data, dict)
+                else response_data
             )
 
-        score = result_data["score"]
-        if not isinstance(score, int | float):
+            return EvaluationResponse.model_validate(result_data)
+        except ValueError as e:
             raise ResponseValidationError(
-                f"Expected 'score' to be a number, got {type(score).__name__}", result_data
-            )
+                f"Invalid evaluation response format: {str(e)}",
+                response_data,
+            ) from e
 
-        return EvaluationResponse(
-            evaluator_name=result_data["evaluator_name"],
-            score=score,
-            justification=result_data.get("justification"),
-            execution_log_id=result_data.get("execution_log_id"),
-            cost=result_data.get("cost"),
+    async def run_evaluator_by_name(
+        self,
+        evaluator_name: str,
+        request: str,
+        response: str,
+        contexts: list[str] | None = None,
+        expected_output: str | None = None,
+    ) -> EvaluationResponse:
+        """Run an evaluation with an evaluator specified by name.
+
+        Args:
+            evaluator_name: Name of the evaluator to use
+            request: User query/request to evaluate
+            response: Model's response to evaluate
+            contexts: Optional list of context passages for RAG evaluations
+            expected_output: Optional expected output for reference-based evaluations
+
+        Returns:
+            Evaluation response with score and justification
+
+        Raises:
+            ResponseValidationError: If the response is missing required fields
+        """
+        payload: dict[str, Any] = {
+            "request": request,
+            "response": response,
+        }
+
+        if contexts:
+            payload["contexts"] = contexts
+
+        if expected_output:
+            payload["expected_output"] = expected_output
+
+        params = {"name": evaluator_name}
+
+        response_data = await self._make_request(
+            "POST", "/v1/evaluators/execute/by-name/", params=params, json_data=payload
         )
+
+        logger.info(f"Raw evaluation by name response: {response_data}")
+
+        try:
+            # Extract the result field if it exists, otherwise use the whole response
+            result_data = (
+                response_data.get("result", response_data)
+                if isinstance(response_data, dict)
+                else response_data
+            )
+
+            # Let Pydantic handle validation through the model
+            return EvaluationResponse.model_validate(result_data)
+        except ValueError as e:
+            # Pydantic will raise ValueError for validation errors
+            raise ResponseValidationError(
+                f"Invalid evaluation response format: {str(e)}",
+                response_data,
+            ) from e
