@@ -122,7 +122,7 @@ class RootSignalsApiClient:
                 if settings.debug:
                     logger.debug(f"Response headers: {dict(response.headers)}")
 
-                if response.status_code >= 400:
+                if response.status_code >= 400:  # noqa: PLR2004
                     try:
                         error_data = response.json()
                         error_message = error_data.get("detail", str(error_data))
@@ -132,7 +132,7 @@ class RootSignalsApiClient:
                     logger.error(f"API error response: {error_message}")
                     raise RootSignalsAPIError(response.status_code, error_message)
 
-                if response.status_code == 204:
+                if response.status_code == 204:  # noqa: PLR2004
                     return {}
 
                 response_data = response.json()
@@ -144,7 +144,7 @@ class RootSignalsApiClient:
                 logger.error(f"Request error: {str(e)}")
                 raise RootSignalsAPIError(0, f"Connection error: {str(e)}") from e
 
-    async def list_evaluators(self, max_count: int | None = None) -> list[EvaluatorInfo]:
+    async def list_evaluators(self, max_count: int | None = None) -> list[EvaluatorInfo]:  # noqa: PLR0915, PLR0912
         """List all available evaluators with pagination support.
 
         Args:
