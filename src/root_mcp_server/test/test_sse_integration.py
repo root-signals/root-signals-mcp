@@ -42,7 +42,12 @@ async def test_list_tools(compose_up_mcp_server: Any) -> None:
         tools: list[dict[str, Any]] = await client.list_tools()
 
         tool_names: set[str] = {tool["name"] for tool in tools}
-        expected_tools: set[str] = {"list_evaluators", "run_evaluation", "run_rag_evaluation"}
+        expected_tools: set[str] = {
+            "list_evaluators",
+            "run_evaluation",
+            "run_rag_evaluation",
+            "run_coding_policy_adherence",
+        }
 
         assert expected_tools.issubset(tool_names), f"Missing expected tools. Found: {tool_names}"
         logger.info(f"Found expected tools: {tool_names}")
@@ -304,3 +309,43 @@ async def test_evaluator_service_integration__rag_evaluation_by_name(
     assert 0 <= rag_result.score <= 1, "RAG evaluation score should be between 0 and 1"
     assert rag_result.evaluator_name, "RAG evaluation response missing evaluator_name field"
     logger.info(f"RAG evaluation by name result: score={rag_result.score}")
+
+
+@pytest.mark.asyncio
+async def test_run_coding_policy_adherence(compose_up_mcp_server: Any) -> None:
+    """Test running a coding policy adherence evaluation via SSE transport."""
+    logger.info("Connecting to MCP server")
+    client: RootSignalsMCPClient = RootSignalsMCPClient()
+
+    try:
+        await client.connect()
+
+        result: dict[str, Any] = await client.run_coding_policy_adherence(
+            policy_documents=[
+                """
+                # Your rule content
+
+                Code Style and Structure:
+                Python Style guide: Use Python 3.11 or later and modern language features such as match statements and the walrus operator. Always use type-hints and keyword arguments. Create Pydantic 2.0+ models for complicated data or function interfaces. Prefer readability of code and context locality to high layers of cognitively complex abstractions, even if some code is breaking DRY principles.
+
+                Design approach: Domain Driven Design. E.g. model distinct domains, such as 3rd party API, as distinct pydantic models and translate between them and the local business logic with adapters.
+                """,
+            ],
+            code="""
+            def send_data_to_api(data):
+                payload = {
+                    "user": data["user_id"],
+                    "timestamp": data["ts"],
+                    "details": data.get("info", {}),
+                }
+                requests.post("https://api.example.com/data", json=payload)
+            """,
+        )
+
+        assert "score" in result, "No score in coding policy adherence evaluation result"
+        assert "justification" in result, (
+            "No justification in coding policy adherence evaluation result"
+        )
+        logger.info(f"Coding policy adherence evaluation completed with score: {result['score']}")
+    finally:
+        await client.disconnect()

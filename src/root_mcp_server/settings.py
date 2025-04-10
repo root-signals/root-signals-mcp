@@ -62,6 +62,11 @@ class Settings(BaseSettings):
         description="Package version from pyproject.toml",
     )
 
+    coding_style_evaluator_id: str = Field(
+        default="4613f248-b60e-403a-bcdc-157d1c44194a",
+        description="RootSignals evaluator ID for coding policy evaluation",
+    )
+
     host: str = Field(default="0.0.0.0", description="Host to bind to", alias="HOST")
     port: int = Field(default=9090, description="Port to listen on", alias="PORT")
     log_level: Literal["debug", "info", "warning", "error", "critical"] = Field(

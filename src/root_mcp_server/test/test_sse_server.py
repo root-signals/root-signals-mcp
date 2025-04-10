@@ -42,6 +42,7 @@ async def test_list_tools(mcp_server: Any) -> None:
     assert "list_evaluators" in tool_dict, "list_evaluators tool not found"
     assert "run_evaluation" in tool_dict, "run_evaluation tool not found"
     assert "run_rag_evaluation" in tool_dict, "run_rag_evaluation tool not found"
+    assert "run_coding_policy_adherence" in tool_dict, "run_coding_policy_adherence tool not found"
 
     for tool in tools:
         assert hasattr(tool, "name"), f"Tool missing name: {tool}"
