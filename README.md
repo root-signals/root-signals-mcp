@@ -95,7 +95,7 @@ From all other clients that support SSE transport - add the server to your confi
 Let's say you want an explanation for a piece of code. You can simply instruct the agent to evaluate its response and improve it with Root Signals evaluators:
 
 <h1 align="center">
-  <img width="600" alt="Use case example image 1" src="https://github.com/user-attachments/assets/bb457e05-038a-4862-aae3-db030aba8a7c" loading="lazy">
+  <img width="750" alt="Use case example image 1" src="https://github.com/user-attachments/assets/bb457e05-038a-4862-aae3-db030aba8a7c" loading="lazy">
 </h1>
 
 After the regular LLM answer, the agent can automatically
@@ -104,13 +104,13 @@ After the regular LLM answer, the agent can automatically
 - provide a higher quality explanation based on the evaluator feedback:
 
 <h1 align="center">
-  <img width="600" alt="Use case example image 1" src="https://github.com/user-attachments/assets/2a83ddc3-9e46-4c2c-bf29-4feabc8c05c7" loading="lazy">
+  <img width="750" alt="Use case example image 1" src="https://github.com/user-attachments/assets/2a83ddc3-9e46-4c2c-bf29-4feabc8c05c7" loading="lazy">
 </h1>
 
 It can then automatically evaluate the second attempt again to make sure the improved explanation is indeed higher quality:
 
 <h1 align="center">
-  <img width="600" alt="Use case example image 1" src="https://github.com/user-attachments/assets/440d62f6-9443-47c6-9d86-f0cf5a5217b9" loading="lazy">
+  <img width="750" alt="Use case example image 1" src="https://github.com/user-attachments/assets/440d62f6-9443-47c6-9d86-f0cf5a5217b9" loading="lazy">
 </h1>
 
 ### 2. Using the MCP reference client directly from code
