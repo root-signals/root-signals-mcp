@@ -28,7 +28,11 @@ jobs:
       - name: Install dependencies with uv
         run: |
           uv sync --extra dev
-          
+
+      - name: Run pre-commit
+        run: |
+          uv run pre-commit run --show-diff-on-failure --color=always --all-files
+
       - name: Create .env file from secrets
         run: |
           echo "ROOT_SIGNALS_API_KEY=${{ secrets.ROOT_SIGNALS_API_KEY }}" > .env

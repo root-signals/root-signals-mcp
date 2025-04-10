@@ -157,7 +157,8 @@ Contributions are welcome but should be applicable to all users
 
 The minimal steps include:
 1. `uv sync --extra dev`
-2. Add your code and your tests to `src/root_mcp_server/tests/`
-3. `docker compose up --build`
-4. `ROOT_SIGNALS_API_KEY=<something> uv run pytest .` - all should pass
-5. `ruff format . && ruff check --fix`
+2. `pre-commit install`
+3. Add your code and your tests to `src/root_mcp_server/tests/`
+4. `docker compose up --build`
+5. `ROOT_SIGNALS_API_KEY=<something> uv run pytest .` - all should pass
+6. `ruff format . && ruff check --fix`

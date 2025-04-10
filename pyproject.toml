@@ -39,6 +39,7 @@ dev = [
     "ruff>=0.0.244",
     "isort>=5.12.0",
     "freezegun>=1.5.1",
+    "pre-commit>=4.2.0",
     "pytest-cov>=6.0.0",
     "python-on-whales>=0.69.0", # integration tests
 ]
@@ -95,4 +96,4 @@ select = ["E", "F", "I", "B", "C4", "N", "UP", "PL"]
 ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["N", "B"]
+"src/root_mcp_server/test/**/*.py" = ["N", "B", "PLR2004", "PLR0912", "PLR0915"]

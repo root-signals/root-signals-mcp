@@ -233,7 +233,6 @@ async def test_client_run_rag_evaluation_by_name(compose_up_mcp_server: Any) -> 
 
         rag_evaluator = next(iter(faithfulness_evaluators), None)
 
-
         assert rag_evaluator is not None, "Required RAG evaluator not found - test cannot proceed"
 
         logger.info(f"Using evaluator by name: {rag_evaluator['name']}")
