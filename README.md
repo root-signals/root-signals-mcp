@@ -2,6 +2,10 @@
   <img width="600" alt="Root Signals logo" src="https://app.rootsignals.ai/images/root-signals-color.svg" loading="lazy">
 </h1>
 
+<p align="center" class="large-text">
+  <i><strong>Measurement & Control for LLM Automations</strong></i>
+</p>
+
 <p align="center">
   <a href="https://huggingface.co/root-signals">
     <img src="https://img.shields.io/badge/HuggingFace-FF9D00?style=for-the-badge&logo=huggingface&logoColor=white&scale=2" />
@@ -20,48 +24,30 @@
   </a>
 </p>
 
-
-
 # Root Signals MCP Server
 
-A Model Context Protocol (MCP) server that exposes Root Signals evaluators as tools for AI assistants.
+A [Model Context Protocol](https://modelcontextprotocol.io/introduction) (*MCP*) server that exposes **Root Signals** evaluators as tools for AI assistants & agents.
 
 ## Overview
 
-This project implements an MCP server that allows AI assistants to use Root Signals evaluators as tools. 
-It provides a bridge between the Root Signals API and MCP client applications, allowing AI assistants 
-to evaluate responses against various quality criteria.
+This project serves as a bridge between Root Signals API and MCP client applications, allowing AI assistants and agents to evaluate responses against various quality criteria.
 
 ## Features
 
 - Exposes Root Signals evaluators as MCP tools
 - Supports both standard evaluation and RAG evaluation with contexts
-- Implements sse for network deployment
-- Compatible with various MCP clients
+- Implements SSE for network deployment
+- Compatible with various MCP clients such as [Cursor](https://docs.cursor.com/context/model-context-protocol)
 
 ## Tools
 
 The server exposes the following tools:
 
-1. `list_evaluators` - Lists all available evaluators from Root Signals
+1. `list_evaluators` - Lists all available evaluators on your Root Signals account
 2. `run_evaluation` - Runs a standard evaluation using a specified evaluator ID
 3. `run_evaluation_by_name` - Runs a standard evaluation using a specified evaluator name
 4. `run_rag_evaluation` - Runs a RAG evaluation with contexts using a specified evaluator ID
 5. `run_rag_evaluation_by_name` - Runs a RAG evaluation with contexts using a specified evaluator name
-
-## Limitations
-
-### Network Resilience
-
-- The current implementation does *not* include backoff and retry mechanisms for API calls:  
-  - No Exponential backoff for failed requests
-  - No Automatic retries for transient errors
-  - No Request throttling for rate limit compliance
-
-### Bundled MCP client is for reference only
-
-This repo includes a `root_mcp_server.client.RootSignalsMCPClient` for reference with no support guarantees, unlike the server.
-We recommend your own or any of the official [MCP clients](https://modelcontextprotocol.io/clients) for production use.
 
 ## How to use this server
 
@@ -76,6 +62,7 @@ docker run -e ROOT_SIGNALS_API_KEY=<your_key> -p 0.0.0.0:9090:9090 --name=rs-mcp
 ```
 
 You should see some logs
+
 ```bash
 docker logs rs-mcp
 2025-03-25 12:03:24,167 - root_mcp_server.sse - INFO - Starting RootSignals MCP Server v0.1.0
@@ -89,7 +76,8 @@ docker logs rs-mcp
 2025-03-25 12:03:25,628 - root_mcp_server.sse - INFO - SSE server listening on http://0.0.0.0:9090/sse
 ```
 
-From all other clients that support sse transport - add the server to your config
+From all other clients that support SSE transport - add the server to your config, for example in Cursor:
+
 ```json
 {
     "mcpServers": {
@@ -102,7 +90,30 @@ From all other clients that support sse transport - add the server to your confi
 
 ## Usage Examples
 
-### Using the MCP reference client directly from code
+### 1. Evaluate and improve Cursor Agent explanations
+
+Let's say you want an explanation for a piece of code. You can simply instruct the agent to evaluate its response and improve it with Root Signals evaluators:
+
+<h1 align="center">
+  <img width="750" alt="Use case example image 1" src="https://github.com/user-attachments/assets/bb457e05-038a-4862-aae3-db030aba8a7c" loading="lazy">
+</h1>
+
+After the regular LLM answer, the agent can automatically
+- discover appropriate evaluators via Root Signals MCP (`Conciseness` and `Relevance` in this case),
+- execute them and
+- provide a higher quality explanation based on the evaluator feedback:
+
+<h1 align="center">
+  <img width="750" alt="Use case example image 1" src="https://github.com/user-attachments/assets/2a83ddc3-9e46-4c2c-bf29-4feabc8c05c7" loading="lazy">
+</h1>
+
+It can then automatically evaluate the second attempt again to make sure the improved explanation is indeed higher quality:
+
+<h1 align="center">
+  <img width="750" alt="Use case example image 1" src="https://github.com/user-attachments/assets/440d62f6-9443-47c6-9d86-f0cf5a5217b9" loading="lazy">
+</h1>
+
+### 2. Using the MCP reference client directly from code
 
 ```python
 from root_mcp_server.client import RootSignalsMCPClient
@@ -150,12 +161,25 @@ async def main():
         await mcp_client.disconnect()
 ```
 
+## Limitations
 
-## How to contribute
+### Network Resilience
 
-Contributions are welcome but should be applicable to all users
+- The current implementation does *not* include backoff and retry mechanisms for API calls:  
+  - No Exponential backoff for failed requests
+  - No Automatic retries for transient errors
+  - No Request throttling for rate limit compliance
 
-The minimal steps include:
+### Bundled MCP client is for reference only
+
+This repo includes a `root_mcp_server.client.RootSignalsMCPClient` for reference with no support guarantees, unlike the server.
+We recommend your own or any of the official [MCP clients](https://modelcontextprotocol.io/clients) for production use.
+
+## How to Contribute
+
+Contributions are welcome as long as they are applicable to all users.
+
+Minimal steps include:
 1. `uv sync --extra dev`
 2. `pre-commit install`
 3. Add your code and your tests to `src/root_mcp_server/tests/`
