@@ -217,8 +217,8 @@ class SSEMCPServer:
         logger.debug("Handling run_coding_policy_adherence request")
 
         rag_request = RAGEvaluationRequest(
-            evaluator_id=settings.coding_style_evaluator_id,
-            request="Is the response written according to the coding policy?",
+            evaluator_id=settings.coding_policy_evaluator_id,
+            request=settings.coding_policy_evaluator_request,
             response=params.code,
             contexts=params.policy_documents,
         )

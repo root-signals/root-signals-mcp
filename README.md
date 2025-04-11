@@ -48,6 +48,7 @@ The server exposes the following tools:
 3. `run_evaluation_by_name` - Runs a standard evaluation using a specified evaluator name
 4. `run_rag_evaluation` - Runs a RAG evaluation with contexts using a specified evaluator ID
 5. `run_rag_evaluation_by_name` - Runs a RAG evaluation with contexts using a specified evaluator name
+6. `run_coding_policy_adherence` - Runs a coding policy adherence evaluation using policy documents such as AI rules files
 
 ## Limitations
 

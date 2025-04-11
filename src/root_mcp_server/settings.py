@@ -62,9 +62,14 @@ class Settings(BaseSettings):
         description="Package version from pyproject.toml",
     )
 
-    coding_style_evaluator_id: str = Field(
+    coding_policy_evaluator_id: str = Field(
         default="4613f248-b60e-403a-bcdc-157d1c44194a",
         description="RootSignals evaluator ID for coding policy evaluation",
+    )
+
+    coding_policy_evaluator_request: str = Field(
+        default="Is the response written according to the coding policy?",
+        description="Request for the coding policy evaluation",
     )
 
     host: str = Field(default="0.0.0.0", description="Host to bind to", alias="HOST")
