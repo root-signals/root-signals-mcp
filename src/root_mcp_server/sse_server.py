@@ -21,6 +21,7 @@ from starlette.routing import Mount, Route
 
 from root_mcp_server.evaluator import EvaluatorService
 from root_mcp_server.schema import (
+    CodingPolicyAdherenceEvaluationRequest,
     EvaluationRequestByID,
     EvaluationRequestByName,
     EvaluationResponse,
@@ -65,6 +66,7 @@ class SSEMCPServer:
             "run_rag_evaluation": self._handle_run_rag_evaluation,
             "run_evaluation_by_name": self._handle_run_evaluation_by_name,
             "run_rag_evaluation_by_name": self._handle_run_rag_evaluation_by_name,
+            "run_coding_policy_adherence": self._handle_coding_style_evaluation,
         }
 
     async def list_tools(self) -> list[Tool]:
@@ -99,6 +101,11 @@ class SSEMCPServer:
                 description="Run a RAG evaluation with contexts using a RootSignals evaluator by name instead of ID",
                 inputSchema=RAGEvaluationByNameRequest.model_json_schema(),
             ),
+            Tool(
+                name="run_coding_policy_adherence",
+                description="Evaluates that the code is written according to the coding policy defined in the current repository policy documents such as cursor/rules using RootSignals evaluators specifically designed for code quality and coding policy adherence",
+                inputSchema=CodingPolicyAdherenceEvaluationRequest.model_json_schema(),
+            ),
         ]
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> list[TextContent]:
@@ -121,6 +128,8 @@ class SSEMCPServer:
                 request_model = RunEvaluationByNameToolRequest(**arguments)
             elif name == "run_rag_evaluation_by_name":
                 request_model = RunRAGEvaluationByNameToolRequest(**arguments)
+            elif name == "run_coding_policy_adherence":
+                request_model = CodingPolicyAdherenceEvaluationRequest(**arguments)
             else:
                 request_model = UnknownToolRequest(**arguments)
 
@@ -200,6 +209,21 @@ class SSEMCPServer:
         )
 
         return await self.evaluator_service.run_rag_evaluation_by_name(rag_request)
+
+    async def _handle_coding_style_evaluation(
+        self, params: CodingPolicyAdherenceEvaluationRequest
+    ) -> EvaluationResponse:
+        """Handle run_coding_policy_adherence tool call."""
+        logger.debug("Handling run_coding_policy_adherence request")
+
+        rag_request = RAGEvaluationRequest(
+            evaluator_id=settings.coding_policy_evaluator_id,
+            request=settings.coding_policy_evaluator_request,
+            response=params.code,
+            contexts=params.policy_documents,
+        )
+
+        return await self.evaluator_service.run_rag_evaluation(rag_request)
 
 
 def create_app(server: SSEMCPServer) -> Starlette:

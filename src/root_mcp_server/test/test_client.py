@@ -71,6 +71,7 @@ async def test_client_list_tools(compose_up_mcp_server: Any) -> None:
             "run_rag_evaluation",
             "run_evaluation_by_name",
             "run_rag_evaluation_by_name",
+            "run_coding_policy_adherence",
         }
         assert expected_tools.issubset(set(tool_names)), (
             f"Missing expected tools. Found: {tool_names}"

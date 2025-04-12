@@ -257,3 +257,13 @@ class EvaluationByNameRequest(BaseRootSignalsModel):
         if not v.strip():
             raise ValueError("Response cannot be empty")
         return v
+
+
+class CodingPolicyAdherenceEvaluationRequest(BaseToolRequest):
+    """Request model for coding policy adherence evaluation tool."""
+
+    policy_documents: list[str] = Field(
+        ...,
+        description="The policy documents which describe the coding policy, such as cursor/rules file contents",
+    )
+    code: str = Field(..., description="The code to evaluate")

@@ -215,3 +215,21 @@ class RootSignalsMCPClient:
         }
 
         return await self.call_tool("run_rag_evaluation_by_name", arguments)
+
+    async def run_coding_policy_adherence(
+        self, policy_documents: list[str], code: str
+    ) -> dict[str, Any]:
+        """Run a coding policy adherence evaluation using a RootSignals evaluator.
+        Args:
+            policy_documents: List of policy documents, such as the contents of the cursor/rules file which describe the coding policy
+            code: The code to evaluate
+
+        Returns:
+            Evaluation result with score and justifications
+        """
+        arguments = {
+            "policy_documents": policy_documents,
+            "code": code,
+        }
+
+        return await self.call_tool("run_coding_policy_adherence", arguments)
