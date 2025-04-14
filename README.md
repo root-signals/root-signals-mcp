@@ -220,12 +220,11 @@ Minimal steps include:
 5. `ROOT_SIGNALS_API_KEY=<something> uv run pytest .` - all should pass
 6. `ruff format . && ruff check --fix`
 
-<details>
-<summary style="font-size: 1.4em;"><b>Limitations</b></summary><br>
+## Limitations
 
 **Network Resilience**
 
-- The current implementation does *not* include backoff and retry mechanisms for API calls:  
+Current implementation does *not* include backoff and retry mechanisms for API calls:  
   - No Exponential backoff for failed requests
   - No Automatic retries for transient errors
   - No Request throttling for rate limit compliance
@@ -234,5 +233,3 @@ Minimal steps include:
 
 This repo includes a `root_mcp_server.client.RootSignalsMCPClient` for reference with no support guarantees, unlike the server.
 We recommend your own or any of the official [MCP clients](https://modelcontextprotocol.io/clients) for production use.
-
-</details>
