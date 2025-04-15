@@ -131,14 +131,26 @@ async def compose_up_mcp_server() -> Generator[None]:
 
     Docker setup can be flaky in CI environments, so this fixture includes
     extensive health checking and error handling to make tests more reliable.
+
+    Uses the .env file from the root directory for environment variables.
     """
     try:
         check_docker_running()
         os.chdir(PROJECT_ROOT)
 
+        # Check if .env file exists in the project root
+        env_file_path = PROJECT_ROOT / ".env"
+        if not env_file_path.exists():
+            logger.warning(
+                f".env file not found at {env_file_path}, tests may fail if API credentials are required"
+            )
+        else:
+            logger.info(f"Found .env file at {env_file_path}")
+
         cleanup_existing_containers()
 
         logger.info("Starting Docker Compose service")
+        # The env_file is already specified in docker-compose.yml, so it will be used automatically
         docker.compose.up(detach=True)
 
         is_healthy = wait_for_container_health(MAX_HEALTH_RETRIES)

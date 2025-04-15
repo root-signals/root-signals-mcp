@@ -206,6 +206,7 @@ You can measure by simply asking Cursor Agent: `Evaluate the summarizer prompt i
   <img width="750" alt="Prompt evaluation use case example image 1" src="https://github.com/user-attachments/assets/ac14eb51-000a-4a68-b9c4-c8322ac8013a" loading="lazy">
 </h1>
 
+For more usage examples, have a look at [demonstrations](./demonstrations/)
 </details>
 
 ## How to Contribute

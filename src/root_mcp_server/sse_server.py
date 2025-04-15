@@ -93,12 +93,12 @@ class SSEMCPServer:
             ),
             Tool(
                 name="run_evaluation_by_name",
-                description="Run a standard evaluation using a RootSignals evaluator by name instead of ID",
+                description="Run a standard evaluation using a RootSignals evaluator by name",
                 inputSchema=EvaluationRequestByName.model_json_schema(),
             ),
             Tool(
                 name="run_rag_evaluation_by_name",
-                description="Run a RAG evaluation with contexts using a RootSignals evaluator by name instead of ID",
+                description="Run a RAG evaluation with contexts using a RootSignals evaluator by name",
                 inputSchema=RAGEvaluationByNameRequest.model_json_schema(),
             ),
             Tool(

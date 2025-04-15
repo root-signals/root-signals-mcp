@@ -1,7 +1,6 @@
 """Integration tests for the RootSignals MCP Server using SSE transport."""
 
 import logging
-import os
 from typing import Any
 
 import pytest
@@ -17,10 +16,11 @@ from root_mcp_server.schema import (
     RAGEvaluationByNameRequest,
     RAGEvaluationRequest,
 )
+from root_mcp_server.settings import settings
 
 pytestmark = [
     pytest.mark.skipif(
-        os.environ.get("ROOT_SIGNALS_API_KEY", "") == "",
+        settings.root_signals_api_key.get_secret_value() == "",
         reason="ROOT_SIGNALS_API_KEY environment variable not set or empty",
     ),
     pytest.mark.integration,

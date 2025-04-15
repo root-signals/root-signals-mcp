@@ -26,7 +26,7 @@ pytestmark = [
 logger = logging.getLogger("root_mcp_server_tests")
 
 
-def test_user_agent_header() -> None:
+async def test_user_agent_header() -> None:
     """Test that the User-Agent header is properly set."""
     client = RootSignalsApiClient()
 

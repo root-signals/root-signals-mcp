@@ -284,7 +284,7 @@ class RootSignalsApiClient:
             "POST", f"/v1/evaluators/execute/{evaluator_id}/", json_data=payload
         )
 
-        logger.info(f"Raw evaluation response: {response_data}")
+        logger.debug(f"Raw evaluation response: {response_data}")
 
         try:
             result_data = (
@@ -340,7 +340,7 @@ class RootSignalsApiClient:
             "POST", "/v1/evaluators/execute/by-name/", params=params, json_data=payload
         )
 
-        logger.info(f"Raw evaluation by name response: {response_data}")
+        logger.debug(f"Raw evaluation by name response: {response_data}")
 
         try:
             # Extract the result field if it exists, otherwise use the whole response
