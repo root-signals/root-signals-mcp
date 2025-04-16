@@ -2,7 +2,6 @@
 
 import json
 import logging
-import os
 from typing import Any
 from unittest.mock import patch
 
@@ -11,10 +10,11 @@ from pydantic import ValidationError
 
 from root_mcp_server.root_api_client import ResponseValidationError, RootSignalsApiClient
 from root_mcp_server.schema import RunEvaluationToolRequest, RunRAGEvaluationToolRequest
+from root_mcp_server.settings import settings
 
 pytestmark = [
     pytest.mark.skipif(
-        os.environ.get("ROOT_SIGNALS_API_KEY", "") == "",
+        settings.root_signals_api_key.get_secret_value() == "",
         reason="ROOT_SIGNALS_API_KEY environment variable not set or empty",
     ),
     pytest.mark.integration,

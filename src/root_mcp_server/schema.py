@@ -29,6 +29,11 @@ class ListEvaluatorsRequest(BaseToolRequest):
     pass
 
 
+#####################################################################
+### Implementation specific models                                ###
+#####################################################################
+
+
 class RunEvaluationToolRequest(BaseToolRequest):
     """Request model for run_evaluation tool."""
 
@@ -54,7 +59,10 @@ class RunEvaluationToolRequest(BaseToolRequest):
 class RunEvaluationByNameToolRequest(BaseToolRequest):
     """Request model for run_evaluation_by_name tool."""
 
-    evaluator_name: str = Field(..., description="The name of the evaluator to use")
+    evaluator_name: str = Field(
+        ...,
+        description="The name of the evaluator to use in the format returned by the list_evaluators tool",
+    )
     request: str = Field(..., description="The user query to evaluate")
     response: str = Field(..., description="The AI assistant's response to evaluate")
 
@@ -100,9 +108,6 @@ class UnknownToolRequest(BaseToolRequest):
     }
 
 
-###############################################
-## Simplified RootSignals Platform API models #
-###############################################
 class BaseRootSignalsModel(BaseModel):
     """Base class for all models that interact with the RootSignals API.
 
@@ -118,16 +123,27 @@ class BaseRootSignalsModel(BaseModel):
     }
 
 
+#####################################################################
+### LLM Facing Models                                             ###
+### Make sure to add good descriptions and examples, where needed ###
+#####################################################################
 class EvaluationRequestByName(BaseRootSignalsModel):
     """
     Model for evaluation request parameters.
 
     this is based on the EvaluatorExecutionRequest model from the RootSignals API
-    but the optional fields require domain knowledge, so we'll reduce the ones we need and
-    be strict about it instead.
     """
 
-    evaluator_name: str = Field(..., description="The name of the evaluator to use")
+    evaluator_name: str = Field(
+        ...,
+        description="The EXACT name of the evaluator as returned by the `list_evaluators` tool, including spaces and special characters",
+        examples=[
+            "Compliance-preview",
+            "Truthfulness - Global",
+            "Safety for Children",
+            "Context Precision",
+        ],
+    )
     request: str = Field(..., description="The user query to evaluate")
     response: str = Field(..., description="The AI assistant's response to evaluate")
 
@@ -151,8 +167,6 @@ class EvaluationRequestByID(BaseRootSignalsModel):
     Model for evaluation request parameters.
 
     this is based on the EvaluatorExecutionRequest model from the RootSignals API
-    but the optional fields require domain knowledge, so we'll reduce the ones we need and
-    be strict about it instead.
     """
 
     evaluator_id: str = Field(..., description="The ID of the evaluator to use")
@@ -192,6 +206,20 @@ class RAGEvaluationByNameRequest(EvaluationRequestByName):
     )
 
 
+class CodingPolicyAdherenceEvaluationRequest(BaseToolRequest):
+    """Request model for coding policy adherence evaluation tool."""
+
+    policy_documents: list[str] = Field(
+        ...,
+        description="The policy documents which describe the coding policy, such as cursor/rules file contents",
+    )
+    code: str = Field(..., description="The code to evaluate")
+
+
+#####################################################################
+### Simplified RootSignals Platform API models                    ###
+### We trim them down to save tokens                              ###
+#####################################################################
 class EvaluationResponse(BaseRootSignalsModel):
     """
     Model for evaluation response.
@@ -231,39 +259,3 @@ class EvaluatorsListResponse(BaseRootSignalsModel):
 
     evaluators: list[EvaluatorInfo] = Field(..., description="List of evaluators")
     count: int = Field(..., description="Number of evaluators returned")
-
-
-class EvaluationByNameRequest(BaseRootSignalsModel):
-    """
-    Model for evaluation by name request parameters.
-
-    Similar to EvaluationRequest but using evaluator name instead of ID.
-    """
-
-    evaluator_name: str = Field(..., description="The name of the evaluator to use")
-    request: str = Field(..., description="The user query to evaluate")
-    response: str = Field(..., description="The AI assistant's response to evaluate")
-
-    @field_validator("request")
-    @classmethod
-    def validate_request_not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Request cannot be empty")
-        return v
-
-    @field_validator("response")
-    @classmethod
-    def validate_response_not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Response cannot be empty")
-        return v
-
-
-class CodingPolicyAdherenceEvaluationRequest(BaseToolRequest):
-    """Request model for coding policy adherence evaluation tool."""
-
-    policy_documents: list[str] = Field(
-        ...,
-        description="The policy documents which describe the coding policy, such as cursor/rules file contents",
-    )
-    code: str = Field(..., description="The code to evaluate")
