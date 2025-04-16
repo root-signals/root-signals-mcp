@@ -1,8 +1,15 @@
 #!/usr/bin/env -S uv run --quiet --script
 """
 Example of using Root Signals MCP with Pydantic-AI
+run it with: OPENAI_API_KEY=... OPENAI_BASE_URL=... uv run example_pydantic-ai.py
 """
 
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#    "pydantic-ai-slim[mcp,openai]",
+# ]
+# ///
 import os
 
 from pydantic import BaseModel
@@ -16,6 +23,7 @@ agent_prompt = """
     You are a support agent handling customer hotel reservations. 
     You will be given a customer's question, a policy, and the current state of the hotel. 
     Your need to strictly comply with all instructions in the policy and verify your answer with the evaluation tools at your disposal.
+    Think carefully and reflect on the results of your tool calls before responding.
     Your final response is only cosidered correct if it meets the acceptance criteria.
     </instructions>
 
@@ -51,7 +59,7 @@ provider = OpenAIProvider(
     api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL")
 )  # set your proxy if needed, e.g. openrouter or litellm
 model = OpenAIModel(
-    provider=provider, model_name="o1"
+    provider=provider, model_name="gpt-4.1"
 )  # set your model here, including custom models
 
 

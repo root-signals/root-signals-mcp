@@ -29,7 +29,6 @@ dependencies = [
     "anyio>=3.7.0",
     "starlette>=0.28.0",
     "websockets>=15.0.1",
-    "pydantic-ai>=0.0.55",
 ]
 
 [project.optional-dependencies]
