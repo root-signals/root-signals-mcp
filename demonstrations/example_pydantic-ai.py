@@ -7,7 +7,7 @@ run it with: OPENAI_API_KEY=... OPENAI_BASE_URL=... uv run example_pydantic-ai.p
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
-#    "pydantic-ai-slim[mcp,openai]",
+#    "pydantic-ai-slim[mcp,openai]==0.0.54",
 # ]
 # ///
 import os
