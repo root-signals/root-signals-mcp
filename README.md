@@ -55,7 +55,6 @@ The server exposes the following tools:
 #### 1. Get Your API Key
 [Sign up & create a key](https://app.rootsignals.ai/settings/api-keys) or [generate a temporary key](https://app.rootsignals.ai/demo-user)
 
-
 #### 2. Run the MCP Server
 
 ```bash
@@ -205,15 +204,16 @@ You can measure by simply asking Cursor Agent: `Evaluate the summarizer prompt i
 <h1 align="center">
   <img width="750" alt="Prompt evaluation use case example image 1" src="https://github.com/user-attachments/assets/ac14eb51-000a-4a68-b9c4-c8322ac8013a" loading="lazy">
 </h1>
+</details>
 
 For more usage examples, have a look at [demonstrations](./demonstrations/)
-</details>
 
 ## How to Contribute
 
 Contributions are welcome as long as they are applicable to all users.
 
 Minimal steps include:
+
 1. `uv sync --extra dev`
 2. `pre-commit install`
 3. Add your code and your tests to `src/root_mcp_server/tests/`
@@ -225,10 +225,11 @@ Minimal steps include:
 
 **Network Resilience**
 
-Current implementation does *not* include backoff and retry mechanisms for API calls:  
-  - No Exponential backoff for failed requests
-  - No Automatic retries for transient errors
-  - No Request throttling for rate limit compliance
+Current implementation does *not* include backoff and retry mechanisms for API calls:
+
+- No Exponential backoff for failed requests
+- No Automatic retries for transient errors
+- No Request throttling for rate limit compliance
 
 **Bundled MCP client is for reference only**
 
