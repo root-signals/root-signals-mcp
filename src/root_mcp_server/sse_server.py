@@ -227,26 +227,40 @@ class SSEMCPServer:
 
 
 def create_app(server: SSEMCPServer) -> Starlette:
-    """Create a Starlette app with SSE routes."""
-    sse_transport = SseServerTransport("/sse/message/")
+    """Create a Starlette app with SSE routes.
 
-    async def handle_sse(request: Request) -> Any:
-        """Handle SSE connections."""
+    Includes the /sse endpoint from <1.5.0 for backward compatibility and the identical /mcp endpoint.
+    """
+    sse_transport = SseServerTransport("/sse/message/")
+    mcp_transport = SseServerTransport("/mcp/message/")
+
+    async def _run_server_app(
+        request: Request, transport: SseServerTransport
+    ) -> Any:  # pragma: no cover – trivial helper
+        """Internal helper to bridge ASGI request with a given SSE transport."""
         logger.debug("SSE connection initiated")
         try:
-            async with sse_transport.connect_sse(
+            async with transport.connect_sse(
                 request.scope, request.receive, request._send
             ) as streams:
                 await server.app.run(
                     streams[0], streams[1], server.app.create_initialization_options()
                 )
-        except Exception as e:
-            logger.error(f"Error handling SSE connection: {e}", exc_info=True)
-            return Response(f"Error: {e}", status_code=500)
+        except Exception as exc:
+            logger.error("Error handling SSE/MCP connection", exc_info=True)
+            return Response(f"Error: {exc}", status_code=500)
+
+    async def handle_sse(request: Request) -> Any:  # /sse
+        return await _run_server_app(request, sse_transport)
+
+    async def handle_mcp(request: Request) -> Any:  # /mcp
+        return await _run_server_app(request, mcp_transport)
 
     routes = [
         Route("/sse", endpoint=handle_sse),
         Mount("/sse/message/", app=sse_transport.handle_post_message),
+        Route("/mcp", endpoint=handle_mcp),
+        Mount("/mcp/message/", app=mcp_transport.handle_post_message),
         Route("/health", endpoint=lambda r: Response("OK", status_code=200)),
     ]
 
