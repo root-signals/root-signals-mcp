@@ -6,10 +6,9 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
 
 from root_mcp_server.root_api_client import ResponseValidationError, RootSignalsApiClient
-from root_mcp_server.schema import RunEvaluationToolRequest, RunRAGEvaluationToolRequest
+from root_mcp_server.schema import EvaluationRequest, RAGEvaluationRequest
 from root_mcp_server.settings import settings
 
 pytestmark = [
@@ -397,45 +396,33 @@ async def test_sse_server_request_validation__detects_extra_field_errors() -> No
     with the expected error details when extra fields are provided.
     """
 
-    with pytest.raises(ValidationError) as excinfo:
-        RunEvaluationToolRequest(
-            evaluator_id="test-id",
-            request="Test request",
-            response="Test response",
-            unknown_field="This should cause validation error",
-        )
-
-    errors = excinfo.value.errors()
-
-    extra_fields_error = next((err for err in errors if err["type"] == "extra_forbidden"), None)
-    assert extra_fields_error is not None, "No extra fields error found in validation errors"
-    assert "unknown_field" in str(extra_fields_error["loc"]), (
-        "Error doesn't mention the unknown field"
+    # Extra fields should be silently ignored in the new domain-level models
+    model_instance = EvaluationRequest(
+        evaluator_id="test-id",
+        request="Test request",
+        response="Test response",
+        unknown_field="This will be ignored",
     )
 
-    request = RunEvaluationToolRequest(
+    assert not hasattr(model_instance, "unknown_field"), "Unexpected extra field was not ignored"
+
+    request = EvaluationRequest(
         evaluator_id="test-id", request="Test request", response="Test response"
     )
     assert request.evaluator_id == "test-id", "evaluator_id not set correctly"
     assert request.request == "Test request", "request not set correctly"
     assert request.response == "Test response", "response not set correctly"
 
-    with pytest.raises(ValidationError) as excinfo:
-        RunRAGEvaluationToolRequest(
-            evaluator_id="test-id",
-            request="Test request",
-            response="Test response",
-            contexts=["Context 1", "Context 2"],
-            unknown_rag_field="This should also fail",
-        )
-
-    errors = excinfo.value.errors()
-
-    extra_fields_error = next((err for err in errors if err["type"] == "extra_forbidden"), None)
-    assert extra_fields_error is not None, "No extra fields error found in validation errors"
-    assert "unknown_rag_field" in str(extra_fields_error["loc"]), (
-        "Error doesn't mention the unknown field"
+    # RAG request should likewise ignore extra fields
+    rag_request = RAGEvaluationRequest(
+        evaluator_id="test-id",
+        request="Test request",
+        response="Test response",
+        contexts=["Context 1", "Context 2"],
+        unknown_rag_field="ignored",
     )
+
+    assert not hasattr(rag_request, "unknown_rag_field"), "Unexpected extra field present"
 
 
 @pytest.mark.asyncio

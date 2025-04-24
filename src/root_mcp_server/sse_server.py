@@ -22,17 +22,13 @@ from starlette.routing import Mount, Route
 from root_mcp_server.evaluator import EvaluatorService
 from root_mcp_server.schema import (
     CodingPolicyAdherenceEvaluationRequest,
-    EvaluationRequestByID,
+    EvaluationRequest,
     EvaluationRequestByName,
     EvaluationResponse,
     EvaluatorsListResponse,
     ListEvaluatorsRequest,
     RAGEvaluationByNameRequest,
     RAGEvaluationRequest,
-    RunEvaluationByNameToolRequest,
-    RunEvaluationToolRequest,
-    RunRAGEvaluationByNameToolRequest,
-    RunRAGEvaluationToolRequest,
     UnknownToolRequest,
 )
 from root_mcp_server.settings import settings
@@ -84,7 +80,7 @@ class SSEMCPServer:
             Tool(
                 name="run_evaluation",
                 description="Run a standard evaluation using a RootSignals evaluator by ID",
-                inputSchema=EvaluationRequestByID.model_json_schema(),
+                inputSchema=EvaluationRequest.model_json_schema(),
             ),
             Tool(
                 name="run_rag_evaluation",
@@ -121,13 +117,13 @@ class SSEMCPServer:
             if name == "list_evaluators":
                 request_model = ListEvaluatorsRequest(**arguments)
             elif name == "run_evaluation":
-                request_model = RunEvaluationToolRequest(**arguments)
+                request_model = EvaluationRequest(**arguments)
             elif name == "run_rag_evaluation":
-                request_model = RunRAGEvaluationToolRequest(**arguments)
+                request_model = RAGEvaluationRequest(**arguments)
             elif name == "run_evaluation_by_name":
-                request_model = RunEvaluationByNameToolRequest(**arguments)
+                request_model = EvaluationRequestByName(**arguments)
             elif name == "run_rag_evaluation_by_name":
-                request_model = RunRAGEvaluationByNameToolRequest(**arguments)
+                request_model = RAGEvaluationByNameRequest(**arguments)
             elif name == "run_coding_policy_adherence":
                 request_model = CodingPolicyAdherenceEvaluationRequest(**arguments)
             else:
@@ -151,64 +147,39 @@ class SSEMCPServer:
         logger.debug("Handling list_evaluators request")
         return await self.evaluator_service.list_evaluators()
 
-    async def _handle_run_evaluation(self, params: RunEvaluationToolRequest) -> EvaluationResponse:
+    async def _handle_run_evaluation(self, params: EvaluationRequest) -> EvaluationResponse:
         """Handle run_evaluation tool call."""
         logger.debug(f"Handling run_evaluation request for evaluator {params.evaluator_id}")
 
-        eval_request = EvaluationRequestByID(
-            evaluator_id=params.evaluator_id, request=params.request, response=params.response
-        )
-
-        return await self.evaluator_service.run_evaluation(eval_request)
+        # params is already an EvaluationRequestByID (alias). Pass through.
+        return await self.evaluator_service.run_evaluation(params)
 
     async def _handle_run_evaluation_by_name(
-        self, params: RunEvaluationByNameToolRequest
+        self, params: EvaluationRequestByName
     ) -> EvaluationResponse:
         """Handle run_evaluation_by_name tool call."""
         logger.debug(
             f"Handling run_evaluation_by_name request for evaluator {params.evaluator_name}"
         )
 
-        # Convert evaluator_name to evaluator_id for compatibility with existing service
-        eval_request = EvaluationRequestByName(
-            evaluator_name=params.evaluator_name,
-            request=params.request,
-            response=params.response,
-        )
+        # params is already an EvaluationRequestByName (alias). Pass through.
+        return await self.evaluator_service.run_evaluation_by_name(params)
 
-        return await self.evaluator_service.run_evaluation_by_name(eval_request)
-
-    async def _handle_run_rag_evaluation(
-        self, params: RunRAGEvaluationToolRequest
-    ) -> EvaluationResponse:
+    async def _handle_run_rag_evaluation(self, params: RAGEvaluationRequest) -> EvaluationResponse:
         """Handle run_rag_evaluation tool call."""
         logger.debug(f"Handling run_rag_evaluation request for evaluator {params.evaluator_id}")
 
-        rag_request = RAGEvaluationRequest(
-            evaluator_id=params.evaluator_id,
-            request=params.request,
-            response=params.response,
-            contexts=params.contexts,
-        )
-
-        return await self.evaluator_service.run_rag_evaluation(rag_request)
+        return await self.evaluator_service.run_rag_evaluation(params)
 
     async def _handle_run_rag_evaluation_by_name(
-        self, params: RunRAGEvaluationByNameToolRequest
+        self, params: RAGEvaluationByNameRequest
     ) -> EvaluationResponse:
         """Handle run_rag_evaluation_by_name tool call."""
         logger.debug(
             f"Handling run_rag_evaluation_by_name request for evaluator {params.evaluator_name}"
         )
 
-        rag_request = RAGEvaluationByNameRequest(
-            evaluator_name=params.evaluator_name,
-            request=params.request,
-            response=params.response,
-            contexts=params.contexts,
-        )
-
-        return await self.evaluator_service.run_rag_evaluation_by_name(rag_request)
+        return await self.evaluator_service.run_rag_evaluation_by_name(params)
 
     async def _handle_coding_style_evaluation(
         self, params: CodingPolicyAdherenceEvaluationRequest

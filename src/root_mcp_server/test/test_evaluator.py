@@ -8,7 +8,7 @@ import pytest
 from root_mcp_server.evaluator import EvaluatorService
 from root_mcp_server.root_api_client import ResponseValidationError, RootSignalsAPIError
 from root_mcp_server.schema import (
-    EvaluationRequestByID,
+    EvaluationRequest,
     EvaluationRequestByName,
     EvaluationResponse,
     EvaluatorInfo,
@@ -152,7 +152,7 @@ async def test_run_evaluation_passes_correct_parameters(mock_api_client: MagicMo
     )
     mock_api_client.run_evaluator.return_value = mock_response
 
-    request = EvaluationRequestByID(
+    request = EvaluationRequest(
         evaluator_id="eval-123", request="Test request", response="Test response"
     )
 
@@ -238,7 +238,7 @@ async def test_run_evaluation_handles_not_found_error(mock_api_client: MagicMock
         status_code=404, detail="Evaluator not found"
     )
 
-    request = EvaluationRequestByID(
+    request = EvaluationRequest(
         evaluator_id="nonexistent-id", request="Test request", response="Test response"
     )
 
@@ -292,7 +292,7 @@ async def test_transient_error_not_retried(mock_api_client: MagicMock) -> None:
         status_code=500, detail="Internal server error - may be transient"
     )
 
-    request = EvaluationRequestByID(
+    request = EvaluationRequest(
         evaluator_id="eval-123", request="Test request", response="Test response"
     )
 

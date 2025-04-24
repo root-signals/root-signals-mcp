@@ -34,69 +34,6 @@ class ListEvaluatorsRequest(BaseToolRequest):
 #####################################################################
 
 
-class RunEvaluationToolRequest(BaseToolRequest):
-    """Request model for run_evaluation tool."""
-
-    evaluator_id: str = Field(..., description="The ID of the evaluator to use")
-    request: str = Field(..., description="The user query to evaluate")
-    response: str = Field(..., description="The AI assistant's response to evaluate")
-
-    @field_validator("request")
-    @classmethod
-    def validate_request_not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Request cannot be empty")
-        return v
-
-    @field_validator("response")
-    @classmethod
-    def validate_response_not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Response cannot be empty")
-        return v
-
-
-class RunEvaluationByNameToolRequest(BaseToolRequest):
-    """Request model for run_evaluation_by_name tool."""
-
-    evaluator_name: str = Field(
-        ...,
-        description="The name of the evaluator to use in the format returned by the list_evaluators tool",
-    )
-    request: str = Field(..., description="The user query to evaluate")
-    response: str = Field(..., description="The AI assistant's response to evaluate")
-
-    @field_validator("request")
-    @classmethod
-    def validate_request_not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Request cannot be empty")
-        return v
-
-    @field_validator("response")
-    @classmethod
-    def validate_response_not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Response cannot be empty")
-        return v
-
-
-class RunRAGEvaluationToolRequest(RunEvaluationToolRequest):
-    """Request model for run_rag_evaluation tool."""
-
-    contexts: list[str] = Field(
-        default=[], description="List of required context strings for evaluation"
-    )
-
-
-class RunRAGEvaluationByNameToolRequest(RunEvaluationByNameToolRequest):
-    """Request model for run_rag_evaluation_by_name tool."""
-
-    contexts: list[str] = Field(
-        default=[], description="List of required context strings for evaluation"
-    )
-
-
 class UnknownToolRequest(BaseToolRequest):
     """Request model for handling unknown tools.
 
@@ -127,7 +64,23 @@ class BaseRootSignalsModel(BaseModel):
 ### LLM Facing Models                                             ###
 ### Make sure to add good descriptions and examples, where needed ###
 #####################################################################
-class EvaluationRequestByName(BaseRootSignalsModel):
+
+
+class BaseEvaluationRequest(BaseRootSignalsModel):
+    """Fields common to all evaluation requests."""
+
+    request: str = Field(..., description="The user query to evaluate")
+    response: str = Field(..., description="The AI assistant's response to evaluate")
+
+    @field_validator("request", "response")
+    @classmethod
+    def validate_not_empty(cls, v: str) -> str:  # noqa: D401 – short
+        if not v.strip():
+            raise ValueError("Field cannot be empty")
+        return v
+
+
+class EvaluationRequestByName(BaseEvaluationRequest):
     """
     Model for evaluation request parameters.
 
@@ -162,7 +115,7 @@ class EvaluationRequestByName(BaseRootSignalsModel):
         return v
 
 
-class EvaluationRequestByID(BaseRootSignalsModel):
+class EvaluationRequest(BaseEvaluationRequest):
     """
     Model for evaluation request parameters.
 
@@ -170,25 +123,9 @@ class EvaluationRequestByID(BaseRootSignalsModel):
     """
 
     evaluator_id: str = Field(..., description="The ID of the evaluator to use")
-    request: str = Field(..., description="The user query to evaluate")
-    response: str = Field(..., description="The AI assistant's response to evaluate")
-
-    @field_validator("request")
-    @classmethod
-    def validate_request_not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Request cannot be empty")
-        return v
-
-    @field_validator("response")
-    @classmethod
-    def validate_response_not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Response cannot be empty")
-        return v
 
 
-class RAGEvaluationRequest(EvaluationRequestByID):
+class RAGEvaluationRequest(EvaluationRequest):
     """
     Model for RAG evaluators that require contexts to be sent"""
 

@@ -8,7 +8,7 @@ import pytest
 from root_mcp_server.client import RootSignalsMCPClient
 from root_mcp_server.evaluator import EvaluatorService
 from root_mcp_server.schema import (
-    EvaluationRequestByID,
+    EvaluationRequest,
     EvaluationRequestByName,
     EvaluationResponse,
     EvaluatorInfo,
@@ -174,7 +174,7 @@ async def test_evaluator_service_integration__standard_evaluation_by_id(
         "Retrieved evaluator ID doesn't match requested ID"
     )
 
-    eval_request = EvaluationRequestByID(
+    eval_request = EvaluationRequest(
         evaluator_id=standard_evaluator.id,
         request="What is the capital of France?",
         response="The capital of France is Paris, which is known as the City of Light.",

@@ -11,7 +11,7 @@ from root_mcp_server.root_api_client import (
     RootSignalsAPIError,
 )
 from root_mcp_server.schema import (
-    EvaluationRequestByID,
+    EvaluationRequest,
     EvaluationRequestByName,
     EvaluationResponse,
     EvaluatorInfo,
@@ -103,7 +103,7 @@ class EvaluatorService:
 
         return None
 
-    async def run_evaluation(self, request: EvaluationRequestByID) -> EvaluationResponse:
+    async def run_evaluation(self, request: EvaluationRequest) -> EvaluationResponse:
         """Run a standard evaluation asynchronously.
 
         This method is used by the SSE server which requires async operation.
