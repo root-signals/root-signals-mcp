@@ -61,7 +61,7 @@ The server exposes the following tools:
 docker run -e ROOT_SIGNALS_API_KEY=<your_key> -p 0.0.0.0:9090:9090 --name=rs-mcp -d ghcr.io/root-signals/root-signals-mcp:latest
 ```
 
-You should see some logs
+You should see some logs (note: `/mcp` is the new preferred endpoint; `/sse` is still available for backward‑compatibility)
 
 ```bash
 docker logs rs-mcp
