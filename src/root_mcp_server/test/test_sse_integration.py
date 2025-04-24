@@ -150,7 +150,6 @@ async def test_evaluator_service_integration__standard_evaluation_by_id(
     service: EvaluatorService = EvaluatorService()
 
     evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
-    assert evaluators_response.count > 0, "No evaluators returned from the service"
     assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
 
     standard_evaluator: EvaluatorInfo | None = next(
@@ -197,7 +196,6 @@ async def test_evaluator_service_integration__standard_evaluation_by_name(
     service: EvaluatorService = EvaluatorService()
 
     evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
-    assert evaluators_response.count > 0, "No evaluators returned from the service"
     assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
 
     standard_evaluator: EvaluatorInfo | None = next(
@@ -234,7 +232,6 @@ async def test_evaluator_service_integration__rag_evaluation_by_id(
     service: EvaluatorService = EvaluatorService()
 
     evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
-    assert evaluators_response.count > 0, "No evaluators returned from the service"
     assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
 
     rag_evaluator: EvaluatorInfo | None = next(
@@ -281,7 +278,6 @@ async def test_evaluator_service_integration__rag_evaluation_by_name(
     evaluators_response: EvaluatorsListResponse = await service.list_evaluators(
         max_count=120
     )  # Workaround to find one in long lists of custom evaluators, until RS-2660 is implemented
-    assert evaluators_response.count > 0, "No evaluators returned from the service"
     assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
 
     rag_evaluator: EvaluatorInfo | None = next(

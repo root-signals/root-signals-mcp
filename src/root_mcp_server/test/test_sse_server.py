@@ -7,7 +7,10 @@ from unittest.mock import patch
 
 import pytest
 
-from root_mcp_server.root_api_client import ResponseValidationError, RootSignalsApiClient
+from root_mcp_server.root_api_client import (
+    ResponseValidationError,
+    RootSignalsEvaluatorRepository,
+)
 from root_mcp_server.schema import EvaluationRequest, RAGEvaluationRequest
 from root_mcp_server.settings import settings
 
@@ -64,9 +67,7 @@ async def test_call_tool_list_evaluators__basic_api_response_includes_expected_f
     response_data = json.loads(result[0].text)
     assert "evaluators" in response_data, "Response missing evaluators list"
     assert len(response_data["evaluators"]) > 0, "No evaluators found"
-    assert "count" in response_data, "Response missing count"
-
-    logger.info(f"Found {response_data['count']} evaluators")
+    logger.info(f"Found {len(response_data['evaluators'])} evaluators")
 
 
 @pytest.mark.asyncio
@@ -314,7 +315,7 @@ async def test_run_rag_evaluation_missing_context(mcp_server: Any) -> None:
 @pytest.mark.asyncio
 async def test_sse_server_schema_evolution__handles_new_fields_gracefully() -> None:
     """Test that our models handle new fields in API responses gracefully."""
-    with patch.object(RootSignalsApiClient, "_make_request") as mock_request:
+    with patch.object(RootSignalsEvaluatorRepository, "_make_request") as mock_request:
         mock_request.return_value = {
             "result": {
                 "evaluator_name": "Test Evaluator",
@@ -325,7 +326,7 @@ async def test_sse_server_schema_evolution__handles_new_fields_gracefully() -> N
             }
         }
 
-        client = RootSignalsApiClient()
+        client = RootSignalsEvaluatorRepository()
         result = await client.run_evaluator(
             evaluator_id="test-id", request="Test request", response="Test response"
         )
@@ -341,7 +342,7 @@ async def test_sse_server_schema_evolution__handles_new_fields_gracefully() -> N
 @pytest.mark.asyncio
 async def test_root_client_schema_compatibility__detects_api_schema_changes() -> None:
     """Test that our schema models detect changes in the API response format."""
-    with patch.object(RootSignalsApiClient, "_make_request") as mock_request:
+    with patch.object(RootSignalsEvaluatorRepository, "_make_request") as mock_request:
         mock_request.return_value = {
             "result": {
                 "score": 0.9,
@@ -349,7 +350,7 @@ async def test_root_client_schema_compatibility__detects_api_schema_changes() ->
             }
         }
 
-        client = RootSignalsApiClient()
+        client = RootSignalsEvaluatorRepository()
 
         with pytest.raises(ResponseValidationError) as excinfo:
             await client.run_evaluator(

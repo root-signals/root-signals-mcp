@@ -48,7 +48,7 @@ class ResponseValidationError(Exception):
         super().__init__(f"Response validation error: {message}")
 
 
-class RootSignalsApiClient:
+class RootSignalsEvaluatorRepository:
     """HTTP client for the RootSignals API."""
 
     def __init__(

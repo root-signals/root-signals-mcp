@@ -192,7 +192,6 @@ class EvaluatorInfo(BaseRootSignalsModel):
 
 
 class EvaluatorsListResponse(BaseRootSignalsModel):
-    """Model for evaluators list response."""
+    """List of evaluators returned by `list_evaluators`."""
 
     evaluators: list[EvaluatorInfo] = Field(..., description="List of evaluators")
-    count: int = Field(..., description="Number of evaluators returned")

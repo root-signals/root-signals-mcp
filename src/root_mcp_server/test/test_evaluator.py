@@ -6,7 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from root_mcp_server.evaluator import EvaluatorService
-from root_mcp_server.root_api_client import ResponseValidationError, RootSignalsAPIError
+from root_mcp_server.root_api_client import (
+    ResponseValidationError,
+    RootSignalsAPIError,
+)
 from root_mcp_server.schema import (
     EvaluationRequest,
     EvaluationRequestByName,
@@ -22,7 +25,7 @@ logger = logging.getLogger("test_evaluator")
 @pytest.fixture
 def mock_api_client() -> MagicMock:
     """Create a mock API client for testing."""
-    with patch("root_mcp_server.evaluator.RootSignalsApiClient") as mock_client_class:
+    with patch("root_mcp_server.evaluator.RootSignalsEvaluatorRepository") as mock_client_class:
         mock_client = MagicMock()
         mock_client.list_evaluators = AsyncMock()
         mock_client.run_evaluator = AsyncMock()
