@@ -49,6 +49,9 @@ The server exposes the following tools:
 4. `run_rag_evaluation` - Runs a RAG evaluation with contexts using a specified evaluator ID
 5. `run_rag_evaluation_by_name` - Runs a RAG evaluation with contexts using a specified evaluator name
 6. `run_coding_policy_adherence` - Runs a coding policy adherence evaluation using policy documents such as AI rules files
+7. `list_judges` - Lists all available judges on your Root Signals account. A judge is a collection of evaluators forming LLM-as-a-judge.
+8. `run_judge` - Runs a judge using a specified judge ID
+
 
 ## How to use this server
 
