@@ -13,6 +13,7 @@ import httpx
 from root_signals_mcp.schema import (
     EvaluationResponse,
     EvaluatorInfo,
+    JudgeInfo,
 )
 from root_signals_mcp.settings import settings
 
@@ -245,6 +246,111 @@ class RootSignalsEvaluatorRepository:
                 ) from e
 
         return evaluators
+
+    async def list_judges(self, max_count: int | None = None) -> list[JudgeInfo]:  # noqa: PLR0915, PLR0912
+        """List all available judges with pagination support.
+
+        Args:
+            max_count: Maximum number of judges to fetch (defaults to settings.max_judges)
+
+        Returns:
+            List of judge information
+
+        Raises:
+            ResponseValidationError: If a required field is missing in any judge
+        """
+        max_to_fetch = max_count if max_count is not None else settings.max_judges
+        judges_raw: list[dict[str, Any]] = []
+
+        page_size = min(max_to_fetch, 40)
+        next_page_url = (
+            f"/beta/judges?page_size={page_size}&show_global={settings.show_public_judges}"
+        )
+
+        while next_page_url and len(judges_raw) < max_to_fetch:
+            if next_page_url.startswith("http"):
+                next_page_url = "/" + next_page_url.split("/", 3)[3]
+
+            response = await self._make_request("GET", next_page_url)
+            logger.debug(f"Raw judges response: {response}")
+
+            if isinstance(response, dict):
+                next_page_url = response.get("next", "")
+
+                # Make sure show_global parameter is preserved if it's not in the next URL
+                if (
+                    next_page_url
+                    and "show_global" not in next_page_url
+                    and settings.show_public_judges is not None
+                ):
+                    if "?" in next_page_url:
+                        next_page_url += f"&show_global={settings.show_public_judges}"
+                    else:
+                        next_page_url += f"?show_global={settings.show_public_judges}"
+
+                if "results" in response and isinstance(response["results"], list):
+                    current_page_judges = response["results"]
+                    logger.debug(f"Found {len(current_page_judges)} judges in 'results' field")
+                else:
+                    raise ResponseValidationError(
+                        "Could not find 'results' field in response", response
+                    )
+            elif isinstance(response, list):
+                logger.debug("Response is a direct list of judges")
+                current_page_judges = response
+                next_page_url = ""
+            else:
+                raise ResponseValidationError(
+                    f"Expected response to be a dict or list, got {type(response).__name__}",
+                    cast(dict[str, Any], response),
+                )
+
+            judges_raw.extend(current_page_judges)
+            logger.info(
+                f"Fetched {len(current_page_judges)} more judges, total now: {len(judges_raw)}"
+            )
+
+            if len(current_page_judges) == 0:
+                logger.debug("Received empty page, stopping pagination")
+                break
+
+        if len(judges_raw) > max_to_fetch:
+            judges_raw = judges_raw[:max_to_fetch]
+            logger.debug(f"Trimmed results to {max_to_fetch} judges")
+
+        logger.info(f"Found {len(judges_raw)} judges total after pagination")
+
+        judges = []
+        for i, judge_data in enumerate(judges_raw):
+            try:
+                logger.debug(f"Processing judge {i}: {judge_data}")
+
+                id_value = judge_data["id"]
+                name_value = judge_data["name"]
+                created_at = judge_data["created_at"]
+
+                if isinstance(created_at, datetime):
+                    created_at = created_at.isoformat()
+
+                description = judge_data.get("intent")
+
+                judge = JudgeInfo(
+                    id=id_value,
+                    name=name_value,
+                    created_at=created_at,
+                    description=description,
+                )
+                judges.append(judge)
+            except KeyError as e:
+                missing_field = str(e).strip("'")
+                logger.warning(f"Judge at index {i} missing required field: '{missing_field}'")
+                logger.warning(f"Judge data: {judge_data}")
+                raise ResponseValidationError(
+                    f"Judge at index {i} missing required field: '{missing_field}'",
+                    judge_data,
+                ) from e
+
+        return judges
 
     async def run_evaluator(
         self,

@@ -67,6 +67,7 @@ async def test_client_list_tools(compose_up_mcp_server: Any) -> None:
 
         expected_tools = {
             "list_evaluators",
+            "list_judges",
             "run_evaluation",
             "run_rag_evaluation",
             "run_evaluation_by_name",
@@ -100,6 +101,30 @@ async def test_client_list_evaluators(compose_up_mcp_server: Any) -> None:
 
         logger.info(f"Found {len(evaluators)} evaluators")
         logger.info(f"First evaluator: {first_evaluator['name']}")
+    finally:
+        await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_client_list_judges(compose_up_mcp_server: Any) -> None:
+    """Test client list_judges method with a real server."""
+    logger.info("Testing list_judges")
+    client = RootSignalsMCPClient()
+
+    try:
+        await client.connect()
+
+        judges = await client.list_judges()
+
+        assert isinstance(judges, list)
+        assert len(judges) > 0
+
+        first_judge = judges[0]
+        assert "id" in first_judge
+        assert "name" in first_judge
+
+        logger.info(f"Found {len(judges)} judges")
+        logger.info(f"First judge: {first_judge['name']}")
     finally:
         await client.disconnect()
 

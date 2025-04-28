@@ -71,6 +71,23 @@ async def test_call_tool_list_evaluators__basic_api_response_includes_expected_f
 
 
 @pytest.mark.asyncio
+async def test_call_tool_list_judges__basic_api_response_includes_expected_fields(
+    mcp_server: Any,
+) -> None:
+    """Test basic functionality of the list_judges tool."""
+    result = await mcp_server.call_tool("list_judges", {})
+
+    assert len(result) == 1, "Expected single result content"
+    assert result[0].type == "text", "Expected text content"
+
+    response_data = json.loads(result[0].text)
+    assert "judges" in response_data, "Response missing judges list"
+    assert len(response_data["judges"]) > 0, "No judges found"
+
+    logger.info(f"Found {len(response_data['judges'])} judges")
+
+
+@pytest.mark.asyncio
 async def test_call_tool_list_evaluators__returns_newest_evaluators_first_by_default(
     mcp_server: Any,
 ) -> None:

@@ -56,7 +56,14 @@ class Settings(BaseSettings):
         default=40,
         description="Maximum number of evaluators to fetch",
     )
-
+    max_judges: int = Field(
+        default=40,
+        description="Maximum number of judges to fetch",
+    )
+    show_public_judges: bool = Field(
+        default=False,
+        description="Whether to show public judges",
+    )
     version: str = Field(
         default_factory=get_package_version,
         description="Package version from pyproject.toml",

@@ -11,7 +11,7 @@ from root_signals_mcp.root_api_client import (
     RootSignalsAPIError,
     RootSignalsEvaluatorRepository,
 )
-from root_signals_mcp.schema import EvaluatorInfo
+from root_signals_mcp.schema import EvaluatorInfo, JudgeInfo
 from root_signals_mcp.settings import settings
 
 pytestmark = [
@@ -445,3 +445,84 @@ async def test_root_client_run_evaluator__handles_unexpected_response_fields() -
         # Extra fields should be ignored by Pydantic's model_validate
         assert not hasattr(result, "new_field_not_in_schema"), "Extra fields should be ignored"
         assert not hasattr(result, "another_new_field"), "Extra fields should be ignored"
+
+
+@pytest.mark.asyncio
+async def test_list_judges() -> None:
+    """Test listing judges from the API."""
+    client = RootSignalsApiClient()
+
+    judges = await client.list_judges()
+
+    assert judges, "No judges returned"
+    assert len(judges) > 0, "Empty judges list"
+
+    first_judge = judges[0]
+    assert first_judge.id, "Judge missing ID"
+    assert first_judge.name, "Judge missing name"
+    assert first_judge.created_at, "Judge missing created_at"
+
+    logger.info(f"Found {len(judges)} judges")
+    logger.info(f"First judge: {first_judge.name} (ID: {first_judge.id})")
+
+
+@pytest.mark.asyncio
+async def test_list_judges_with_count() -> None:
+    """Test listing judges with a specific count limit."""
+    client = RootSignalsApiClient()
+
+    max_count = 5
+    judges = await client.list_judges(max_count=max_count)
+
+    assert len(judges) <= max_count, f"Got more than {max_count} judges"
+    logger.info(f"Retrieved {len(judges)} judges with max_count={max_count}")
+
+    max_count_large = 30
+    judges_large = await client.list_judges(max_count=max_count_large)
+
+    assert len(judges_large) <= max_count_large, f"Got more than {max_count_large} judges"
+    logger.info(f"Retrieved {len(judges_large)} judges with max_count={max_count_large}")
+
+    if len(judges) == max_count:
+        assert len(judges_large) > len(judges), "Larger max_count didn't return more judges"
+
+
+@pytest.mark.asyncio
+async def test_judges_pagination_handling() -> None:
+    """Test that pagination works correctly when more judges are available."""
+    client = RootSignalsApiClient()
+
+    small_limit = 2
+    judges = await client.list_judges(max_count=small_limit)
+
+    assert len(judges) == small_limit, f"Expected exactly {small_limit} judges"
+    assert isinstance(judges[0], JudgeInfo), "Result items are not JudgeInfo objects"
+
+
+@pytest.mark.asyncio
+async def test_root_client_list_judges__handles_unexpected_response_fields() -> None:
+    """Test handling of extra fields in judge API response."""
+    with patch.object(RootSignalsApiClient, "_make_request") as mock_request:
+        # Include extra fields that aren't in our schema
+        mock_request.return_value = {
+            "results": [
+                {
+                    "id": "test-judge-id",
+                    "name": "Test Judge",
+                    "created_at": "2023-01-01T00:00:00Z",
+                    "new_field_not_in_schema": "value",
+                    "another_new_field": {"nested": "data", "that": ["should", "be", "ignored"]},
+                }
+            ]
+        }
+
+        client = RootSignalsApiClient()
+        judges = await client.list_judges()
+
+        assert len(judges) == 1, "Should have one judge in the result"
+        assert judges[0].id == "test-judge-id", "Judge ID should be correctly parsed"
+        assert judges[0].name == "Test Judge", "Judge name should be correctly parsed"
+
+        # Extra fields should be ignored by Pydantic's model_validate
+        assert not hasattr(judges[0], "new_field_not_in_schema"), "Extra fields should be ignored"
+        assert not hasattr(judges[0], "another_new_field"), "Extra fields should be ignored"

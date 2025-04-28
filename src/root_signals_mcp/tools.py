@@ -48,6 +48,11 @@ def get_tools() -> list[Tool]:
             description="Evaluate code against repository coding policy documents using a dedicated RootSignals evaluator",
             inputSchema=CodingPolicyAdherenceEvaluationRequest.model_json_schema(),
         ),
+        Tool(
+            name="list_judges",
+            description="List all available judges from RootSignals. Judge is a collection of evaluators forming LLM-as-a-judge.",
+            inputSchema=ListJudgesRequest.model_json_schema(),
+        ),
     ]
 
 
