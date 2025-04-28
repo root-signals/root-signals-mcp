@@ -29,6 +29,8 @@ from root_signals_mcp.schema import (
     ListJudgesRequest,
     RAGEvaluationByNameRequest,
     RAGEvaluationRequest,
+    RunJudgeRequest,
+    RunJudgeResponse,
     UnknownToolRequest,
 )
 from root_signals_mcp.settings import settings
@@ -61,6 +63,7 @@ class RootMCPServerCore:  # noqa: D101
             "run_rag_evaluation_by_name": self._handle_run_rag_evaluation_by_name,
             "run_coding_policy_adherence": self._handle_coding_style_evaluation,
             "list_judges": self._handle_list_judges,
+            "run_judge": self._handle_run_judge,
         }
 
     # ---------------------------------------------------------------------
@@ -162,3 +165,8 @@ class RootMCPServerCore:  # noqa: D101
         """Handle list_judges tool call."""
         logger.debug("Handling list_judges request")
         return await self.judge_service.list_judges()
+
+    async def _handle_run_judge(self, params: RunJudgeRequest) -> RunJudgeResponse:
+        """Handle run_judge tool call."""
+        logger.debug("Handling run_judge request for judge %s", params.judge_id)
+        return await self.judge_service.run_judge(params)

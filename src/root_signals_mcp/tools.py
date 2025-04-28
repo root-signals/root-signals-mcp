@@ -12,6 +12,7 @@ from root_signals_mcp.schema import (
     ListJudgesRequest,
     RAGEvaluationByNameRequest,
     RAGEvaluationRequest,
+    RunJudgeRequest,
 )
 
 
@@ -54,6 +55,11 @@ def get_tools() -> list[Tool]:
             description="List all available judges from RootSignals. Judge is a collection of evaluators forming LLM-as-a-judge.",
             inputSchema=ListJudgesRequest.model_json_schema(),
         ),
+        Tool(
+            name="run_judge",
+            description="Run a judge using a RootSignals judge by ID",
+            inputSchema=RunJudgeRequest.model_json_schema(),
+        ),
     ]
 
 
@@ -68,12 +74,13 @@ def get_request_model(tool_name: str) -> type | None:
 
     mapping: dict[str, type] = {
         "list_evaluators": ListEvaluatorsRequest,
-        "run_evaluation": EvaluationRequest,
-        "run_rag_evaluation": RAGEvaluationRequest,
-        "run_evaluation_by_name": EvaluationRequestByName,
-        "run_rag_evaluation_by_name": RAGEvaluationByNameRequest,
-        "run_coding_policy_adherence": CodingPolicyAdherenceEvaluationRequest,
         "list_judges": ListJudgesRequest,
+        "run_coding_policy_adherence": CodingPolicyAdherenceEvaluationRequest,
+        "run_evaluation_by_name": EvaluationRequestByName,
+        "run_evaluation": EvaluationRequest,
+        "run_judge": RunJudgeRequest,
+        "run_rag_evaluation_by_name": RAGEvaluationByNameRequest,
+        "run_rag_evaluation": RAGEvaluationRequest,
     }
 
     return mapping.get(tool_name)

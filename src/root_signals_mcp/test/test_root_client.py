@@ -12,7 +12,7 @@ from root_signals_mcp.root_api_client import (
     RootSignalsEvaluatorRepository,
     RootSignalsJudgeRepository,
 )
-from root_signals_mcp.schema import EvaluatorInfo
+from root_signals_mcp.schema import EvaluatorInfo, RunJudgeRequest
 from root_signals_mcp.settings import settings
 
 pytestmark = [
@@ -515,3 +515,32 @@ async def test_root_client_list_judges__handles_unexpected_response_fields() -> 
         # Extra fields should be ignored by Pydantic's model_validate
         assert not hasattr(judges[0], "new_field_not_in_schema"), "Extra fields should be ignored"
         assert not hasattr(judges[0], "another_new_field"), "Extra fields should be ignored"
+
+
+@pytest.mark.asyncio
+async def test_run_judge() -> None:
+    """Test running a judge with the API client."""
+    client = RootSignalsJudgeRepository()
+
+    judges = await client.list_judges()
+
+    judge = next(iter(judges), None)
+    assert judge is not None, "No judge found"
+
+    logger.info(f"Using judge: {judge.name} (ID: {judge.id})")
+
+    result = await client.run_judge(
+        RunJudgeRequest(
+            judge_id=judge.id,
+            judge_name=judge.name,
+            request="What is the capital of France?",
+            response="The capital of France is Paris, which is known as the City of Light.",
+        )
+    )
+
+    assert result.evaluator_results, "Missing evaluator results in result"
+    assert isinstance(result.evaluator_results[0].score, float), "Score is not a float"
+    assert 0 <= result.evaluator_results[0].score <= 1, "Score outside expected range (0-1)"
+
+    logger.info(f"Evaluation score: {result.evaluator_results[0].score}")
+    logger.info(f"Justification: {result.evaluator_results[0].justification}")

@@ -68,6 +68,7 @@ async def test_client_list_tools(compose_up_mcp_server: Any) -> None:
         expected_tools = {
             "list_evaluators",
             "list_judges",
+            "run_judge",
             "run_evaluation",
             "run_rag_evaluation",
             "run_evaluation_by_name",
@@ -157,6 +158,42 @@ async def test_client_run_evaluation(compose_up_mcp_server: Any) -> None:
         assert "score" in result
         assert "justification" in result
         logger.info(f"Evaluation score: {result['score']}")
+    finally:
+        await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_client_run_judge(compose_up_mcp_server: Any) -> None:
+    """Test client run_judge method with a real server."""
+    logger.info("Testing run_judge")
+    client = RootSignalsMCPClient()
+
+    try:
+        await client.connect()
+
+        judges = await client.list_judges()
+
+        judge = next(iter(judges), None)
+        assert judge is not None, "No judge found"
+
+        logger.info(f"Using judge: {judge['name']}")
+
+        result = await client.run_judge(
+            judge["id"],
+            judge["name"],
+            "What is the capital of France?",
+            "The capital of France is Paris, which is known as the City of Light.",
+        )
+
+        assert "evaluator_results" in result
+        assert len(result["evaluator_results"]) > 0
+
+        evaluator_result = result["evaluator_results"][0]
+        assert "evaluator_name" in evaluator_result
+        assert "score" in evaluator_result
+        assert "justification" in evaluator_result
+
+        logger.info(f"Judge score: {evaluator_result['score']}")
     finally:
         await client.disconnect()
 

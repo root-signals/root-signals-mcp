@@ -14,6 +14,8 @@ from root_signals_mcp.schema import (
     EvaluationResponse,
     EvaluatorInfo,
     JudgeInfo,
+    RunJudgeRequest,
+    RunJudgeResponse,
 )
 from root_signals_mcp.settings import settings
 
@@ -450,3 +452,41 @@ class RootSignalsJudgeRepository(RootSignalsRepositoryBase):
                 ) from e
 
         return judges
+
+    async def run_judge(
+        self,
+        run_judge_request: RunJudgeRequest,
+    ) -> RunJudgeResponse:
+        """Run a judge by ID.
+
+        Args:
+            run_judge_request: The judge request containing request, response, and judge ID.
+
+        Returns:
+            Evaluation result
+
+        Raises:
+            ResponseValidationError: If response cannot be parsed
+            RootSignalsAPIError: If API returns an error
+        """
+        logger.info(f"Running judge {run_judge_request.judge_id}")
+        logger.debug(f"Judge request: {run_judge_request.request[:100]}...")
+        logger.debug(f"Judge response: {run_judge_request.response[:100]}...")
+
+        payload = {
+            "request": run_judge_request.request,
+            "response": run_judge_request.response,
+        }
+
+        result = await self._make_request(
+            method="POST",
+            path=f"/beta/judges/{run_judge_request.judge_id}/execute/",
+            json_data=payload,
+        )
+        try:
+            return RunJudgeResponse.model_validate(result)
+        except ValueError as e:
+            raise ResponseValidationError(
+                f"Invalid judge response format: {str(e)}",
+                result,
+            ) from e

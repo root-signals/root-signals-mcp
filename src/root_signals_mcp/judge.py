@@ -13,6 +13,8 @@ from root_signals_mcp.root_api_client import (
 from root_signals_mcp.schema import (
     JudgeInfo,
     JudgesListResponse,
+    RunJudgeRequest,
+    RunJudgeResponse,
 )
 from root_signals_mcp.settings import settings
 
@@ -79,3 +81,35 @@ class JudgeService:
         return JudgesListResponse(
             judges=judges,
         )
+
+    async def run_judge(self, request: RunJudgeRequest) -> RunJudgeResponse:
+        """Run a judge by ID.
+
+        Args:
+            request: The judge request containing request, response, and judge ID.
+
+        Returns:
+            RunJudgeResponse: The judge result.
+
+        Raises:
+            RuntimeError: If the judge execution fails.
+        """
+        logger.info(f"Running judge with ID {request.judge_id}")
+
+        try:
+            result = await self.async_client.run_judge(request)
+
+            logger.info("Judge execution completed")
+            return result
+
+        except RootSignalsAPIError as e:
+            logger.error(f"Failed to run judge: {e}", exc_info=settings.debug)
+            raise RuntimeError(f"Judge execution failed: {str(e)}") from e
+        except ResponseValidationError as e:
+            logger.error(f"Response validation error: {e}", exc_info=settings.debug)
+            if e.response_data:
+                logger.debug(f"Response data: {e.response_data}")
+            raise RuntimeError(f"Invalid judge response: {str(e)}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error running judge: {e}", exc_info=settings.debug)
+            raise RuntimeError(f"Judge execution failed: {str(e)}") from e
