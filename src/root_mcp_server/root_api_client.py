@@ -160,7 +160,7 @@ class RootSignalsEvaluatorRepository:
         evaluators_raw: list[dict[str, Any]] = []
 
         page_size = min(max_to_fetch, 40)
-        next_page_url = f"/v1/evaluators?page_size={page_size}"
+        next_page_url = f"/v1/evaluators/?page_size={page_size}"
 
         while next_page_url and len(evaluators_raw) < max_to_fetch:
             if next_page_url.startswith("http"):

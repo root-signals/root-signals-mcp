@@ -4,33 +4,20 @@ This module provides a dedicated implementation of the MCP server using
 Server-Sent Events (SSE) transport for network/Docker environments.
 """
 
-import json
 import logging
 import os
 import sys
 from typing import Any
 
 import uvicorn
-from mcp.server.lowlevel import Server
 from mcp.server.sse import SseServerTransport
-from mcp.types import TextContent, Tool
+from mcp.types import TextContent
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Mount, Route
 
-from root_mcp_server.evaluator import EvaluatorService
-from root_mcp_server.schema import (
-    CodingPolicyAdherenceEvaluationRequest,
-    EvaluationRequest,
-    EvaluationRequestByName,
-    EvaluationResponse,
-    EvaluatorsListResponse,
-    ListEvaluatorsRequest,
-    RAGEvaluationByNameRequest,
-    RAGEvaluationRequest,
-    UnknownToolRequest,
-)
+from root_mcp_server.core import RootMCPServerCore
 from root_mcp_server.settings import settings
 
 logging.basicConfig(
@@ -44,157 +31,20 @@ class SSEMCPServer:
     """MCP server implementation with SSE transport for Docker/network environments."""
 
     def __init__(self) -> None:
-        """Initialize the MCP server."""
-        self.evaluator_service = EvaluatorService()
-        self.app = Server("RootSignals Evaluators")
+        """Initialize the SSE-based MCP server."""
 
-        @self.app.list_tools()  # TODO: Check with MCP protocol if this is expected to be exposed to clients
-        async def list_tools() -> list[Tool]:
-            return await self.list_tools()
+        self.core = RootMCPServerCore()
 
-        @self.app.call_tool()
-        async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-            return await self.call_tool(name, arguments)
+        # For backward-compatibility: expose common attributes directly.
+        self.app = self.core.app
+        self.evaluator_service = self.core.evaluator_service
 
-        self.function_map = {
-            "list_evaluators": self._handle_list_evaluators,
-            "run_evaluation": self._handle_run_evaluation,
-            "run_rag_evaluation": self._handle_run_rag_evaluation,
-            "run_evaluation_by_name": self._handle_run_evaluation_by_name,
-            "run_rag_evaluation_by_name": self._handle_run_rag_evaluation_by_name,
-            "run_coding_policy_adherence": self._handle_coding_style_evaluation,
-        }
-
-    async def list_tools(self) -> list[Tool]:
-        """List available tools for the MCP server."""
-        return [
-            Tool(
-                name="list_evaluators",
-                description="List all available evaluators from RootSignals",
-                inputSchema={
-                    "type": "object",
-                    "properties": {},
-                    "required": [],
-                },
-            ),
-            Tool(
-                name="run_evaluation",
-                description="Run a standard evaluation using a RootSignals evaluator by ID",
-                inputSchema=EvaluationRequest.model_json_schema(),
-            ),
-            Tool(
-                name="run_rag_evaluation",
-                description="Run a RAG evaluation with contexts using a RootSignals evaluator by ID",
-                inputSchema=RAGEvaluationRequest.model_json_schema(),
-            ),
-            Tool(
-                name="run_evaluation_by_name",
-                description="Run a standard evaluation using a RootSignals evaluator by name",
-                inputSchema=EvaluationRequestByName.model_json_schema(),
-            ),
-            Tool(
-                name="run_rag_evaluation_by_name",
-                description="Run a RAG evaluation with contexts using a RootSignals evaluator by name",
-                inputSchema=RAGEvaluationByNameRequest.model_json_schema(),
-            ),
-            Tool(
-                name="run_coding_policy_adherence",
-                description="Evaluates that the code is written according to the coding policy defined in the current repository policy documents such as cursor/rules using RootSignals evaluators specifically designed for code quality and coding policy adherence",
-                inputSchema=CodingPolicyAdherenceEvaluationRequest.model_json_schema(),
-            ),
-        ]
+    # delegation to avoid changing callers in tests
+    async def list_tools(self):
+        return await self.core.list_tools()
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> list[TextContent]:
-        """Call a tool by name with the given arguments."""
-        logger.debug(f"Tool call: {name}, arguments: {arguments}")
-
-        handler = self.function_map.get(name)
-        if not handler:
-            logger.warning(f"Unknown tool: {name}")
-            return [TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))]
-
-        try:
-            if name == "list_evaluators":
-                request_model = ListEvaluatorsRequest(**arguments)
-            elif name == "run_evaluation":
-                request_model = EvaluationRequest(**arguments)
-            elif name == "run_rag_evaluation":
-                request_model = RAGEvaluationRequest(**arguments)
-            elif name == "run_evaluation_by_name":
-                request_model = EvaluationRequestByName(**arguments)
-            elif name == "run_rag_evaluation_by_name":
-                request_model = RAGEvaluationByNameRequest(**arguments)
-            elif name == "run_coding_policy_adherence":
-                request_model = CodingPolicyAdherenceEvaluationRequest(**arguments)
-            else:
-                request_model = UnknownToolRequest(**arguments)
-
-            result = await handler(request_model)
-            return [TextContent(type="text", text=result.model_dump_json(exclude_none=True))]
-
-        except Exception as e:
-            logger.error(f"Error calling tool {name}: {e}", exc_info=settings.debug)
-            return [
-                TextContent(
-                    type="text", text=json.dumps({"error": f"Error calling tool {name}: {e}"})
-                )
-            ]
-
-    async def _handle_list_evaluators(
-        self, params: ListEvaluatorsRequest
-    ) -> EvaluatorsListResponse:
-        """Handle list_evaluators tool call."""
-        logger.debug("Handling list_evaluators request")
-        return await self.evaluator_service.list_evaluators()
-
-    async def _handle_run_evaluation(self, params: EvaluationRequest) -> EvaluationResponse:
-        """Handle run_evaluation tool call."""
-        logger.debug(f"Handling run_evaluation request for evaluator {params.evaluator_id}")
-
-        # params is already an EvaluationRequestByID (alias). Pass through.
-        return await self.evaluator_service.run_evaluation(params)
-
-    async def _handle_run_evaluation_by_name(
-        self, params: EvaluationRequestByName
-    ) -> EvaluationResponse:
-        """Handle run_evaluation_by_name tool call."""
-        logger.debug(
-            f"Handling run_evaluation_by_name request for evaluator {params.evaluator_name}"
-        )
-
-        # params is already an EvaluationRequestByName (alias). Pass through.
-        return await self.evaluator_service.run_evaluation_by_name(params)
-
-    async def _handle_run_rag_evaluation(self, params: RAGEvaluationRequest) -> EvaluationResponse:
-        """Handle run_rag_evaluation tool call."""
-        logger.debug(f"Handling run_rag_evaluation request for evaluator {params.evaluator_id}")
-
-        return await self.evaluator_service.run_rag_evaluation(params)
-
-    async def _handle_run_rag_evaluation_by_name(
-        self, params: RAGEvaluationByNameRequest
-    ) -> EvaluationResponse:
-        """Handle run_rag_evaluation_by_name tool call."""
-        logger.debug(
-            f"Handling run_rag_evaluation_by_name request for evaluator {params.evaluator_name}"
-        )
-
-        return await self.evaluator_service.run_rag_evaluation_by_name(params)
-
-    async def _handle_coding_style_evaluation(
-        self, params: CodingPolicyAdherenceEvaluationRequest
-    ) -> EvaluationResponse:
-        """Handle run_coding_policy_adherence tool call."""
-        logger.debug("Handling run_coding_policy_adherence request")
-
-        rag_request = RAGEvaluationRequest(
-            evaluator_id=settings.coding_policy_evaluator_id,
-            request=settings.coding_policy_evaluator_request,
-            response=params.code,
-            contexts=params.policy_documents,
-        )
-
-        return await self.evaluator_service.run_rag_evaluation(rag_request)
+        return await self.core.call_tool(name, arguments)
 
 
 def create_app(server: SSEMCPServer) -> Starlette:
