@@ -8,8 +8,8 @@ import pytest
 
 from root_mcp_server.root_api_client import (
     ResponseValidationError,
-    RootSignalsApiClient,
     RootSignalsAPIError,
+    RootSignalsEvaluatorRepository,
 )
 from root_mcp_server.schema import EvaluatorInfo
 from root_mcp_server.settings import settings
@@ -28,7 +28,7 @@ logger = logging.getLogger("root_mcp_server_tests")
 
 async def test_user_agent_header() -> None:
     """Test that the User-Agent header is properly set."""
-    client = RootSignalsApiClient()
+    client = RootSignalsEvaluatorRepository()
 
     assert "User-Agent" in client.headers, "User-Agent header is missing"
 
@@ -47,7 +47,7 @@ async def test_user_agent_header() -> None:
 @pytest.mark.asyncio
 async def test_list_evaluators() -> None:
     """Test listing evaluators from the API."""
-    client = RootSignalsApiClient()
+    client = RootSignalsEvaluatorRepository()
 
     evaluators = await client.list_evaluators()
 
@@ -71,7 +71,7 @@ async def test_list_evaluators() -> None:
 @pytest.mark.asyncio
 async def test_list_evaluators_with_count() -> None:
     """Test listing evaluators with a specific count limit."""
-    client = RootSignalsApiClient()
+    client = RootSignalsEvaluatorRepository()
 
     max_count = 5
     evaluators = await client.list_evaluators(max_count=max_count)
@@ -94,7 +94,7 @@ async def test_list_evaluators_with_count() -> None:
 @pytest.mark.asyncio
 async def test_pagination_handling() -> None:
     """Test that pagination works correctly when more evaluators are available."""
-    client = RootSignalsApiClient()
+    client = RootSignalsEvaluatorRepository()
 
     small_limit = 2
     evaluators = await client.list_evaluators(max_count=small_limit)
@@ -106,7 +106,7 @@ async def test_pagination_handling() -> None:
 @pytest.mark.asyncio
 async def test_run_evaluator() -> None:
     """Test running an evaluation with the API client."""
-    client = RootSignalsApiClient()
+    client = RootSignalsEvaluatorRepository()
 
     evaluators = await client.list_evaluators()
 
@@ -132,7 +132,7 @@ async def test_run_evaluator() -> None:
 @pytest.mark.asyncio
 async def test_run_evaluator_with_contexts() -> None:
     """Test running a RAG evaluation with contexts."""
-    client = RootSignalsApiClient()
+    client = RootSignalsEvaluatorRepository()
 
     evaluators = await client.list_evaluators()
 
@@ -164,7 +164,7 @@ async def test_run_evaluator_with_contexts() -> None:
 @pytest.mark.asyncio
 async def test_evaluator_not_found() -> None:
     """Test error handling when evaluator is not found."""
-    client = RootSignalsApiClient()
+    client = RootSignalsEvaluatorRepository()
 
     with pytest.raises(RootSignalsAPIError) as excinfo:
         await client.run_evaluator(
@@ -180,7 +180,7 @@ async def test_evaluator_not_found() -> None:
 @pytest.mark.asyncio
 async def test_run_evaluator_with_expected_output() -> None:
     """Test running an evaluation with expected output."""
-    client = RootSignalsApiClient()
+    client = RootSignalsEvaluatorRepository()
 
     evaluators = await client.list_evaluators()
     eval_with_expected = next(
@@ -209,7 +209,7 @@ async def test_run_evaluator_with_expected_output() -> None:
 @pytest.mark.asyncio
 async def test_run_evaluator_by_name() -> None:
     """Test running an evaluation using the evaluator name instead of ID."""
-    client = RootSignalsApiClient()
+    client = RootSignalsEvaluatorRepository()
 
     evaluators = await client.list_evaluators()
     assert evaluators, "No evaluators returned"
@@ -237,7 +237,7 @@ async def test_run_evaluator_by_name() -> None:
 @pytest.mark.asyncio
 async def test_run_rag_evaluator_by_name() -> None:
     """Test running a RAG evaluation using the evaluator name instead of ID."""
-    client = RootSignalsApiClient()
+    client = RootSignalsEvaluatorRepository()
 
     evaluators = await client.list_evaluators()
     rag_evaluator = next((e for e in evaluators if e.requires_contexts), None)
@@ -269,7 +269,7 @@ async def test_run_rag_evaluator_by_name() -> None:
 async def test_api_client_connection_error() -> None:
     """Test error handling when connection fails."""
     with patch("httpx.AsyncClient.request", side_effect=httpx.ConnectError("Connection failed")):
-        client = RootSignalsApiClient()
+        client = RootSignalsEvaluatorRepository()
         with pytest.raises(RootSignalsAPIError) as excinfo:
             await client.list_evaluators()
 
@@ -282,8 +282,8 @@ async def test_api_client_connection_error() -> None:
 @pytest.mark.asyncio
 async def test_api_response_validation_error() -> None:
     """Test validation error handling with invalid responses."""
-    with patch.object(RootSignalsApiClient, "_make_request") as mock_request:
-        client = RootSignalsApiClient()
+    with patch.object(RootSignalsEvaluatorRepository, "_make_request") as mock_request:
+        client = RootSignalsEvaluatorRepository()
 
         # Case 1: Empty response when results field expected
         mock_request.return_value = {}
@@ -318,8 +318,8 @@ async def test_api_response_validation_error() -> None:
 @pytest.mark.asyncio
 async def test_evaluator_missing_fields() -> None:
     """Test handling of evaluators with missing required fields."""
-    with patch.object(RootSignalsApiClient, "_make_request") as mock_request:
-        client = RootSignalsApiClient()
+    with patch.object(RootSignalsEvaluatorRepository, "_make_request") as mock_request:
+        client = RootSignalsEvaluatorRepository()
 
         mock_request.return_value = {
             "results": [
@@ -368,7 +368,7 @@ async def test_evaluator_missing_fields() -> None:
 @pytest.mark.asyncio
 async def test_root_client_schema_compatibility__detects_api_schema_changes() -> None:
     """Test that our schema models detect changes in the API response format."""
-    with patch.object(RootSignalsApiClient, "_make_request") as mock_request:
+    with patch.object(RootSignalsEvaluatorRepository, "_make_request") as mock_request:
         # Case 1: Missing required field (evaluator_name)
         mock_request.return_value = {
             "result": {
@@ -377,7 +377,7 @@ async def test_root_client_schema_compatibility__detects_api_schema_changes() ->
             }
         }
 
-        client = RootSignalsApiClient()
+        client = RootSignalsEvaluatorRepository()
         with pytest.raises(ResponseValidationError) as excinfo:
             await client.run_evaluator(
                 evaluator_id="test-id", request="Test request", response="Test response"
@@ -425,7 +425,7 @@ async def test_root_client_schema_compatibility__detects_api_schema_changes() ->
 @pytest.mark.asyncio
 async def test_root_client_run_evaluator__handles_unexpected_response_fields() -> None:
     """Test handling of extra fields in API response."""
-    with patch.object(RootSignalsApiClient, "_make_request") as mock_request:
+    with patch.object(RootSignalsEvaluatorRepository, "_make_request") as mock_request:
         # Include extra fields that aren't in our schema
         mock_request.return_value = {
             "result": {
@@ -436,7 +436,7 @@ async def test_root_client_run_evaluator__handles_unexpected_response_fields() -
             }
         }
 
-        client = RootSignalsApiClient()
+        client = RootSignalsEvaluatorRepository()
         result = await client.run_evaluator(evaluator_id="test-id", request="Test", response="Test")
 
         assert result.evaluator_name == "Test", "Required field should be correctly parsed"

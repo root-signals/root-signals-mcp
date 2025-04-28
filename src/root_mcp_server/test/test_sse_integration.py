@@ -8,7 +8,7 @@ import pytest
 from root_mcp_server.client import RootSignalsMCPClient
 from root_mcp_server.evaluator import EvaluatorService
 from root_mcp_server.schema import (
-    EvaluationRequestByID,
+    EvaluationRequest,
     EvaluationRequestByName,
     EvaluationResponse,
     EvaluatorInfo,
@@ -150,7 +150,6 @@ async def test_evaluator_service_integration__standard_evaluation_by_id(
     service: EvaluatorService = EvaluatorService()
 
     evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
-    assert evaluators_response.count > 0, "No evaluators returned from the service"
     assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
 
     standard_evaluator: EvaluatorInfo | None = next(
@@ -174,7 +173,7 @@ async def test_evaluator_service_integration__standard_evaluation_by_id(
         "Retrieved evaluator ID doesn't match requested ID"
     )
 
-    eval_request = EvaluationRequestByID(
+    eval_request = EvaluationRequest(
         evaluator_id=standard_evaluator.id,
         request="What is the capital of France?",
         response="The capital of France is Paris, which is known as the City of Light.",
@@ -197,7 +196,6 @@ async def test_evaluator_service_integration__standard_evaluation_by_name(
     service: EvaluatorService = EvaluatorService()
 
     evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
-    assert evaluators_response.count > 0, "No evaluators returned from the service"
     assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
 
     standard_evaluator: EvaluatorInfo | None = next(
@@ -234,7 +232,6 @@ async def test_evaluator_service_integration__rag_evaluation_by_id(
     service: EvaluatorService = EvaluatorService()
 
     evaluators_response: EvaluatorsListResponse = await service.list_evaluators()
-    assert evaluators_response.count > 0, "No evaluators returned from the service"
     assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
 
     rag_evaluator: EvaluatorInfo | None = next(
@@ -281,7 +278,6 @@ async def test_evaluator_service_integration__rag_evaluation_by_name(
     evaluators_response: EvaluatorsListResponse = await service.list_evaluators(
         max_count=120
     )  # Workaround to find one in long lists of custom evaluators, until RS-2660 is implemented
-    assert evaluators_response.count > 0, "No evaluators returned from the service"
     assert len(evaluators_response.evaluators) > 0, "No evaluator objects in the response"
 
     rag_evaluator: EvaluatorInfo | None = next(

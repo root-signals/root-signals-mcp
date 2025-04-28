@@ -7,11 +7,11 @@ import logging
 
 from root_mcp_server.root_api_client import (
     ResponseValidationError,
-    RootSignalsApiClient,
     RootSignalsAPIError,
+    RootSignalsEvaluatorRepository,
 )
 from root_mcp_server.schema import (
-    EvaluationRequestByID,
+    EvaluationRequest,
     EvaluationRequestByName,
     EvaluationResponse,
     EvaluatorInfo,
@@ -29,7 +29,7 @@ class EvaluatorService:
 
     def __init__(self) -> None:
         """Initialize the evaluator service."""
-        self.async_client = RootSignalsApiClient(
+        self.async_client = RootSignalsEvaluatorRepository(
             api_key=settings.root_signals_api_key.get_secret_value(),
             base_url=settings.root_signals_api_url,
         )
@@ -81,10 +81,7 @@ class EvaluatorService:
         """
         evaluators = await self.fetch_evaluators(max_count)
 
-        return EvaluatorsListResponse(
-            evaluators=evaluators,
-            count=len(evaluators),
-        )
+        return EvaluatorsListResponse(evaluators=evaluators)
 
     async def get_evaluator_by_id(self, evaluator_id: str) -> EvaluatorInfo | None:
         """Get evaluator details by ID.
@@ -103,7 +100,7 @@ class EvaluatorService:
 
         return None
 
-    async def run_evaluation(self, request: EvaluationRequestByID) -> EvaluationResponse:
+    async def run_evaluation(self, request: EvaluationRequest) -> EvaluationResponse:
         """Run a standard evaluation asynchronously.
 
         This method is used by the SSE server which requires async operation.

@@ -11,6 +11,13 @@ wheels/
 
 # blob
 references/mcp-python-sdk
+node_modules/
+package.json
+package-lock.json
+.mypy_cache/
+.pytest_cache/
+__pycache__/
+htmlcov/
 
 # credentials
 .env

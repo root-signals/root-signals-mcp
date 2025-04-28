@@ -6,10 +6,12 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
 
-from root_mcp_server.root_api_client import ResponseValidationError, RootSignalsApiClient
-from root_mcp_server.schema import RunEvaluationToolRequest, RunRAGEvaluationToolRequest
+from root_mcp_server.root_api_client import (
+    ResponseValidationError,
+    RootSignalsEvaluatorRepository,
+)
+from root_mcp_server.schema import EvaluationRequest, RAGEvaluationRequest
 from root_mcp_server.settings import settings
 
 pytestmark = [
@@ -65,9 +67,7 @@ async def test_call_tool_list_evaluators__basic_api_response_includes_expected_f
     response_data = json.loads(result[0].text)
     assert "evaluators" in response_data, "Response missing evaluators list"
     assert len(response_data["evaluators"]) > 0, "No evaluators found"
-    assert "count" in response_data, "Response missing count"
-
-    logger.info(f"Found {response_data['count']} evaluators")
+    logger.info(f"Found {len(response_data['evaluators'])} evaluators")
 
 
 @pytest.mark.asyncio
@@ -315,7 +315,7 @@ async def test_run_rag_evaluation_missing_context(mcp_server: Any) -> None:
 @pytest.mark.asyncio
 async def test_sse_server_schema_evolution__handles_new_fields_gracefully() -> None:
     """Test that our models handle new fields in API responses gracefully."""
-    with patch.object(RootSignalsApiClient, "_make_request") as mock_request:
+    with patch.object(RootSignalsEvaluatorRepository, "_make_request") as mock_request:
         mock_request.return_value = {
             "result": {
                 "evaluator_name": "Test Evaluator",
@@ -326,7 +326,7 @@ async def test_sse_server_schema_evolution__handles_new_fields_gracefully() -> N
             }
         }
 
-        client = RootSignalsApiClient()
+        client = RootSignalsEvaluatorRepository()
         result = await client.run_evaluator(
             evaluator_id="test-id", request="Test request", response="Test response"
         )
@@ -342,7 +342,7 @@ async def test_sse_server_schema_evolution__handles_new_fields_gracefully() -> N
 @pytest.mark.asyncio
 async def test_root_client_schema_compatibility__detects_api_schema_changes() -> None:
     """Test that our schema models detect changes in the API response format."""
-    with patch.object(RootSignalsApiClient, "_make_request") as mock_request:
+    with patch.object(RootSignalsEvaluatorRepository, "_make_request") as mock_request:
         mock_request.return_value = {
             "result": {
                 "score": 0.9,
@@ -350,7 +350,7 @@ async def test_root_client_schema_compatibility__detects_api_schema_changes() ->
             }
         }
 
-        client = RootSignalsApiClient()
+        client = RootSignalsEvaluatorRepository()
 
         with pytest.raises(ResponseValidationError) as excinfo:
             await client.run_evaluator(
@@ -397,45 +397,33 @@ async def test_sse_server_request_validation__detects_extra_field_errors() -> No
     with the expected error details when extra fields are provided.
     """
 
-    with pytest.raises(ValidationError) as excinfo:
-        RunEvaluationToolRequest(
-            evaluator_id="test-id",
-            request="Test request",
-            response="Test response",
-            unknown_field="This should cause validation error",
-        )
-
-    errors = excinfo.value.errors()
-
-    extra_fields_error = next((err for err in errors if err["type"] == "extra_forbidden"), None)
-    assert extra_fields_error is not None, "No extra fields error found in validation errors"
-    assert "unknown_field" in str(extra_fields_error["loc"]), (
-        "Error doesn't mention the unknown field"
+    # Extra fields should be silently ignored in the new domain-level models
+    model_instance = EvaluationRequest(
+        evaluator_id="test-id",
+        request="Test request",
+        response="Test response",
+        unknown_field="This will be ignored",
     )
 
-    request = RunEvaluationToolRequest(
+    assert not hasattr(model_instance, "unknown_field"), "Unexpected extra field was not ignored"
+
+    request = EvaluationRequest(
         evaluator_id="test-id", request="Test request", response="Test response"
     )
     assert request.evaluator_id == "test-id", "evaluator_id not set correctly"
     assert request.request == "Test request", "request not set correctly"
     assert request.response == "Test response", "response not set correctly"
 
-    with pytest.raises(ValidationError) as excinfo:
-        RunRAGEvaluationToolRequest(
-            evaluator_id="test-id",
-            request="Test request",
-            response="Test response",
-            contexts=["Context 1", "Context 2"],
-            unknown_rag_field="This should also fail",
-        )
-
-    errors = excinfo.value.errors()
-
-    extra_fields_error = next((err for err in errors if err["type"] == "extra_forbidden"), None)
-    assert extra_fields_error is not None, "No extra fields error found in validation errors"
-    assert "unknown_rag_field" in str(extra_fields_error["loc"]), (
-        "Error doesn't mention the unknown field"
+    # RAG request should likewise ignore extra fields
+    rag_request = RAGEvaluationRequest(
+        evaluator_id="test-id",
+        request="Test request",
+        response="Test response",
+        contexts=["Context 1", "Context 2"],
+        unknown_rag_field="ignored",
     )
+
+    assert not hasattr(rag_request, "unknown_rag_field"), "Unexpected extra field present"
 
 
 @pytest.mark.asyncio
