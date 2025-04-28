@@ -1,6 +1,7 @@
 """Unit tests for the EvaluatorService module."""
 
 import logging
+from collections.abc import Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -23,7 +24,7 @@ logger = logging.getLogger("test_evaluator")
 
 
 @pytest.fixture
-def mock_api_client() -> MagicMock:
+def mock_api_client() -> Generator[MagicMock]:
     """Create a mock API client for testing."""
     with patch("root_signals_mcp.evaluator.RootSignalsEvaluatorRepository") as mock_client_class:
         mock_client = MagicMock()

@@ -9,6 +9,7 @@ from root_signals_mcp.schema import (
     EvaluationRequest,
     EvaluationRequestByName,
     ListEvaluatorsRequest,
+    ListJudgesRequest,
     RAGEvaluationByNameRequest,
     RAGEvaluationRequest,
 )
@@ -56,7 +57,7 @@ def get_tools() -> list[Tool]:
     ]
 
 
-def get_request_model(tool_name: str):
+def get_request_model(tool_name: str) -> type | None:
     """Return the Pydantic *request* model class for a given tool.
 
     This is useful for validating the *arguments* dict passed to
@@ -72,6 +73,7 @@ def get_request_model(tool_name: str):
         "run_evaluation_by_name": EvaluationRequestByName,
         "run_rag_evaluation_by_name": RAGEvaluationByNameRequest,
         "run_coding_policy_adherence": CodingPolicyAdherenceEvaluationRequest,
+        "list_judges": ListJudgesRequest,
     }
 
     return mapping.get(tool_name)

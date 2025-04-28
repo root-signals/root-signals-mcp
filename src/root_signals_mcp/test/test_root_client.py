@@ -10,8 +10,9 @@ from root_signals_mcp.root_api_client import (
     ResponseValidationError,
     RootSignalsAPIError,
     RootSignalsEvaluatorRepository,
+    RootSignalsJudgeRepository,
 )
-from root_signals_mcp.schema import EvaluatorInfo, JudgeInfo
+from root_signals_mcp.schema import EvaluatorInfo
 from root_signals_mcp.settings import settings
 
 pytestmark = [
@@ -450,7 +451,7 @@ async def test_root_client_run_evaluator__handles_unexpected_response_fields() -
 @pytest.mark.asyncio
 async def test_list_judges() -> None:
     """Test listing judges from the API."""
-    client = RootSignalsApiClient()
+    client = RootSignalsJudgeRepository()
 
     judges = await client.list_judges()
 
@@ -469,7 +470,7 @@ async def test_list_judges() -> None:
 @pytest.mark.asyncio
 async def test_list_judges_with_count() -> None:
     """Test listing judges with a specific count limit."""
-    client = RootSignalsApiClient()
+    client = RootSignalsJudgeRepository()
 
     max_count = 5
     judges = await client.list_judges(max_count=max_count)
@@ -488,21 +489,9 @@ async def test_list_judges_with_count() -> None:
 
 
 @pytest.mark.asyncio
-async def test_judges_pagination_handling() -> None:
-    """Test that pagination works correctly when more judges are available."""
-    client = RootSignalsApiClient()
-
-    small_limit = 2
-    judges = await client.list_judges(max_count=small_limit)
-
-    assert len(judges) == small_limit, f"Expected exactly {small_limit} judges"
-    assert isinstance(judges[0], JudgeInfo), "Result items are not JudgeInfo objects"
-
-
-@pytest.mark.asyncio
 async def test_root_client_list_judges__handles_unexpected_response_fields() -> None:
     """Test handling of extra fields in judge API response."""
-    with patch.object(RootSignalsApiClient, "_make_request") as mock_request:
+    with patch.object(RootSignalsJudgeRepository, "_make_request") as mock_request:
         # Include extra fields that aren't in our schema
         mock_request.return_value = {
             "results": [
@@ -516,7 +505,7 @@ async def test_root_client_list_judges__handles_unexpected_response_fields() -> 
             ]
         }
 
-        client = RootSignalsApiClient()
+        client = RootSignalsJudgeRepository()
         judges = await client.list_judges()
 
         assert len(judges) == 1, "Should have one judge in the result"

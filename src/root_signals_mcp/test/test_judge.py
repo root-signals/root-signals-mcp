@@ -15,7 +15,7 @@ logger = logging.getLogger("test_judge")
 @pytest.fixture
 def mock_api_client() -> Generator[MagicMock]:
     """Create a mock API client for testing."""
-    with patch("root_mcp_server.judge.RootSignalsApiClient") as mock_client_class:
+    with patch("root_signals_mcp.judge.RootSignalsJudgeRepository") as mock_client_class:
         mock_client = MagicMock()
         mock_client.list_judges = AsyncMock()
         mock_client_class.return_value = mock_client

@@ -7,8 +7,8 @@ import logging
 
 from root_signals_mcp.root_api_client import (
     ResponseValidationError,
-    RootSignalsEvaluatorRepository,
     RootSignalsAPIError,
+    RootSignalsJudgeRepository,
 )
 from root_signals_mcp.schema import (
     JudgeInfo,
@@ -24,7 +24,7 @@ class JudgeService:
 
     def __init__(self) -> None:
         """Initialize the judge service."""
-        self.async_client = RootSignalsEvaluatorRepository(
+        self.async_client = RootSignalsJudgeRepository(
             api_key=settings.root_signals_api_key.get_secret_value(),
             base_url=settings.root_signals_api_url,
         )
@@ -78,5 +78,4 @@ class JudgeService:
 
         return JudgesListResponse(
             judges=judges,
-            count=len(judges),
         )

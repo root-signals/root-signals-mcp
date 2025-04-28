@@ -195,7 +195,6 @@ class EvaluatorsListResponse(BaseRootSignalsModel):
     """List of evaluators returned by `list_evaluators`."""
 
     evaluators: list[EvaluatorInfo] = Field(..., description="List of evaluators")
-    count: int = Field(..., description="Number of evaluators returned")
 
 
 class ListJudgesRequest(BaseToolRequest):
@@ -222,4 +221,3 @@ class JudgesListResponse(BaseRootSignalsModel):
     """Model for judges list response."""
 
     judges: list[JudgeInfo] = Field(..., description="List of judges")
-    count: int = Field(..., description="Number of judges returned")
