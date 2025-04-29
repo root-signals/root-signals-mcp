@@ -15,9 +15,9 @@ from typing import Any
 from mcp.server.lowlevel import Server
 from mcp.types import TextContent, Tool
 
-from root_mcp_server import tools as tool_catalogue
-from root_mcp_server.evaluator import EvaluatorService
-from root_mcp_server.schema import (
+from root_signals_mcp import tools as tool_catalogue
+from root_signals_mcp.evaluator import EvaluatorService
+from root_signals_mcp.schema import (
     CodingPolicyAdherenceEvaluationRequest,
     EvaluationRequest,
     EvaluationRequestByName,
@@ -28,9 +28,9 @@ from root_mcp_server.schema import (
     RAGEvaluationRequest,
     UnknownToolRequest,
 )
-from root_mcp_server.settings import settings
+from root_signals_mcp.settings import settings
 
-logger = logging.getLogger("root_mcp_server.core")
+logger = logging.getLogger("root_signals_mcp.core")
 
 
 _Handler = Callable[[Any], Awaitable[Any]]

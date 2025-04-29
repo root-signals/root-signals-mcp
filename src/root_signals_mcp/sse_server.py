@@ -17,14 +17,14 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Mount, Route
 
-from root_mcp_server.core import RootMCPServerCore
-from root_mcp_server.settings import settings
+from root_signals_mcp.core import RootMCPServerCore
+from root_signals_mcp.settings import settings
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper()),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-logger = logging.getLogger("root_mcp_server.sse")
+logger = logging.getLogger("root_signals_mcp.sse")
 
 
 class SSEMCPServer:
@@ -35,11 +35,10 @@ class SSEMCPServer:
 
         self.core = RootMCPServerCore()
 
-        # For backward-compatibility: expose common attributes directly.
+        # For backward-comp
         self.app = self.core.app
         self.evaluator_service = self.core.evaluator_service
 
-    # delegation to avoid changing callers in tests
     async def list_tools(self):
         return await self.core.list_tools()
 

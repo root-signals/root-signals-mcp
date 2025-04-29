@@ -7,12 +7,12 @@ from unittest.mock import patch
 
 import pytest
 
-from root_mcp_server.root_api_client import (
+from root_signals_mcp.root_api_client import (
     ResponseValidationError,
     RootSignalsEvaluatorRepository,
 )
-from root_mcp_server.schema import EvaluationRequest, RAGEvaluationRequest
-from root_mcp_server.settings import settings
+from root_signals_mcp.schema import EvaluationRequest, RAGEvaluationRequest
+from root_signals_mcp.settings import settings
 
 pytestmark = [
     pytest.mark.skipif(
@@ -433,7 +433,7 @@ async def test_sse_server_unknown_tool_request__explicitly_allows_any_fields() -
     This special model is used for debugging purposes with unknown tools,
     so it needs to capture any arbitrary fields.
     """
-    from root_mcp_server.schema import UnknownToolRequest
+    from root_signals_mcp.schema import UnknownToolRequest
 
     assert UnknownToolRequest.model_config.get("extra") == "allow", (
         "UnknownToolRequest model_config should be set to allow extra fields"

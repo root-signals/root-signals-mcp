@@ -10,11 +10,11 @@ from typing import Any, cast
 
 import httpx
 
-from root_mcp_server.schema import (
+from root_signals_mcp.schema import (
     EvaluationResponse,
     EvaluatorInfo,
 )
-from root_mcp_server.settings import settings
+from root_signals_mcp.settings import settings
 
 logger = logging.getLogger("root_mcp_server.root_client")
 

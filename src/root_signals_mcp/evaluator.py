@@ -5,12 +5,12 @@ This module handles the integration with RootSignals evaluators.
 
 import logging
 
-from root_mcp_server.root_api_client import (
+from root_signals_mcp.root_api_client import (
     ResponseValidationError,
     RootSignalsAPIError,
     RootSignalsEvaluatorRepository,
 )
-from root_mcp_server.schema import (
+from root_signals_mcp.schema import (
     EvaluationRequest,
     EvaluationRequestByName,
     EvaluationResponse,
@@ -19,9 +19,9 @@ from root_mcp_server.schema import (
     RAGEvaluationByNameRequest,
     RAGEvaluationRequest,
 )
-from root_mcp_server.settings import settings
+from root_signals_mcp.settings import settings
 
-logger = logging.getLogger("root_mcp_server.evaluator")
+logger = logging.getLogger("root_signals_mcp.evaluator")
 
 
 class EvaluatorService:

@@ -14,7 +14,7 @@ from typing import Any, TypeVar
 from mcp.client.session import ClientSession
 from mcp.client.sse import sse_client
 
-logger = logging.getLogger("root_mcp_server.client")
+logger = logging.getLogger("root_signals_mcp.client")
 
 T = TypeVar("T")
 
@@ -38,16 +38,13 @@ class RootSignalsMCPClient:
         try:
             logger.info(f"Connecting to MCP server at {self.server_url}")
 
-            # Connect to the SSE endpoint
             sse_transport = await self.exit_stack.enter_async_context(sse_client(self.server_url))
-            read_stream, write_stream = sse_transport
 
-            # Create and initialize client session
+            read_stream, write_stream = sse_transport
             self.session = await self.exit_stack.enter_async_context(
                 ClientSession(read_stream, write_stream)
             )
 
-            # Initialize the session
             await self.session.initialize()
 
             self.connected = True
@@ -143,9 +140,6 @@ class RootSignalsMCPClient:
 
         return await self.call_tool("run_evaluation", arguments)
 
-    # Alias for compatibility with renamed methods
-    run_evaluation_by_id = run_evaluation
-
     async def run_evaluation_by_name(
         self, evaluator_name: str, request: str, response: str
     ) -> dict[str, Any]:
@@ -189,9 +183,6 @@ class RootSignalsMCPClient:
         }
 
         return await self.call_tool("run_rag_evaluation", arguments)
-
-    # Alias for compatibility with renamed methods
-    run_rag_evaluation_by_id = run_rag_evaluation
 
     async def run_rag_evaluation_by_name(
         self, evaluator_name: str, request: str, response: str, contexts: list[str]
