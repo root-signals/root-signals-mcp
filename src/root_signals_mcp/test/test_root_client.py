@@ -6,13 +6,13 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from root_mcp_server.root_api_client import (
+from root_signals_mcp.root_api_client import (
     ResponseValidationError,
     RootSignalsAPIError,
     RootSignalsEvaluatorRepository,
 )
-from root_mcp_server.schema import EvaluatorInfo
-from root_mcp_server.settings import settings
+from root_signals_mcp.schema import EvaluatorInfo
+from root_signals_mcp.settings import settings
 
 pytestmark = [
     pytest.mark.skipif(

@@ -10,6 +10,7 @@ import sys
 from typing import Any
 
 import uvicorn
+from mcp import Tool
 from mcp.server.sse import SseServerTransport
 from mcp.types import TextContent
 from starlette.applications import Starlette
@@ -17,14 +18,14 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Mount, Route
 
-from root_mcp_server.core import RootMCPServerCore
-from root_mcp_server.settings import settings
+from root_signals_mcp.core import RootMCPServerCore
+from root_signals_mcp.settings import settings
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper()),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-logger = logging.getLogger("root_mcp_server.sse")
+logger = logging.getLogger("root_signals_mcp.sse")
 
 
 class SSEMCPServer:
@@ -35,12 +36,11 @@ class SSEMCPServer:
 
         self.core = RootMCPServerCore()
 
-        # For backward-compatibility: expose common attributes directly.
+        # For backward-comp
         self.app = self.core.app
         self.evaluator_service = self.core.evaluator_service
 
-    # delegation to avoid changing callers in tests
-    async def list_tools(self):
+    async def list_tools(self) -> list[Tool]:
         return await self.core.list_tools()
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> list[TextContent]:
@@ -88,17 +88,10 @@ def create_app(server: SSEMCPServer) -> Starlette:
     return Starlette(routes=routes)
 
 
-async def startup() -> SSEMCPServer:
-    """Initialize the server during startup."""
-    server = SSEMCPServer()
-    return server
-
-
 def run_server(host: str = "0.0.0.0", port: int = 9090) -> None:
     """Run the MCP server with SSE transport."""
-    import asyncio
 
-    server = asyncio.run(startup())
+    server = SSEMCPServer()
 
     app = create_app(server)
     logger.info(f"SSE server listening on http://{host}:{port}/sse")

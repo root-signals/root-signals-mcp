@@ -2,7 +2,7 @@
 
 import re
 
-from root_mcp_server.settings import get_package_version, settings
+from root_signals_mcp.settings import get_package_version, settings
 
 
 def test_version_in_settings() -> None:

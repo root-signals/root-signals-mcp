@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from mcp.types import Tool
 
-from root_mcp_server.schema import (
+from root_signals_mcp.schema import (
     CodingPolicyAdherenceEvaluationRequest,
     EvaluationRequest,
     EvaluationRequestByName,

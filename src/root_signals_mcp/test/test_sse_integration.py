@@ -5,9 +5,9 @@ from typing import Any
 
 import pytest
 
-from root_mcp_server.client import RootSignalsMCPClient
-from root_mcp_server.evaluator import EvaluatorService
-from root_mcp_server.schema import (
+from root_signals_mcp.client import RootSignalsMCPClient
+from root_signals_mcp.evaluator import EvaluatorService
+from root_signals_mcp.schema import (
     EvaluationRequest,
     EvaluationRequestByName,
     EvaluationResponse,
@@ -16,7 +16,7 @@ from root_mcp_server.schema import (
     RAGEvaluationByNameRequest,
     RAGEvaluationRequest,
 )
-from root_mcp_server.settings import settings
+from root_signals_mcp.settings import settings
 
 pytestmark = [
     pytest.mark.skipif(
@@ -92,7 +92,7 @@ async def test_run_evaluation(compose_up_mcp_server: Any) -> None:
 
         logger.info(f"Using evaluator: {clarity_evaluator['name']}")
 
-        result: dict[str, Any] = await client.run_evaluation_by_id(
+        result: dict[str, Any] = await client.run_evaluation(
             evaluator_id=clarity_evaluator["id"],
             request="What is the capital of France?",
             response="The capital of France is Paris, which is known as the City of Light.",
@@ -124,7 +124,7 @@ async def test_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
 
         logger.info(f"Using evaluator: {faithfulness_evaluator['name']}")
 
-        result: dict[str, Any] = await client.run_rag_evaluation_by_id(
+        result: dict[str, Any] = await client.run_rag_evaluation(
             evaluator_id=faithfulness_evaluator["id"],
             request="What is the capital of France?",
             response="The capital of France is Paris, which is known as the City of Light.",

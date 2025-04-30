@@ -12,7 +12,7 @@ import pytest
 import pytest_asyncio
 from python_on_whales import Container, DockerClient
 
-from root_mcp_server.sse_server import SSEMCPServer
+from root_signals_mcp.sse_server import SSEMCPServer
 
 # Setup logging
 logger = logging.getLogger("root_mcp_server_tests")

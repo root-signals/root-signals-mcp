@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 
-from root_mcp_server.client import RootSignalsMCPClient
-from root_mcp_server.settings import settings
+from root_signals_mcp.client import RootSignalsMCPClient
+from root_signals_mcp.settings import settings
 
 pytestmark = [
     pytest.mark.skipif(
@@ -123,7 +123,7 @@ async def test_client_run_evaluation(compose_up_mcp_server: Any) -> None:
 
         logger.info(f"Using evaluator: {standard_evaluator['name']}")
 
-        result = await client.run_evaluation_by_id(
+        result = await client.run_evaluation(
             evaluator_id=standard_evaluator["id"],
             request="What is the capital of France?",
             response="The capital of France is Paris, which is known as the City of Light.",
@@ -195,7 +195,7 @@ async def test_client_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
 
         logger.info(f"Using evaluator: {rag_evaluator['name']}")
 
-        result = await client.run_rag_evaluation_by_id(
+        result = await client.run_rag_evaluation(
             evaluator_id=rag_evaluator["id"],
             request="What is the capital of France?",
             response="The capital of France is Paris, which is known as the City of Light.",
