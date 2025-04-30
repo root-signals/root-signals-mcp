@@ -10,6 +10,7 @@ import sys
 from typing import Any
 
 import uvicorn
+from mcp import Tool
 from mcp.server.sse import SseServerTransport
 from mcp.types import TextContent
 from starlette.applications import Starlette
@@ -39,7 +40,7 @@ class SSEMCPServer:
         self.app = self.core.app
         self.evaluator_service = self.core.evaluator_service
 
-    async def list_tools(self):
+    async def list_tools(self) -> list[Tool]:
         return await self.core.list_tools()
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> list[TextContent]:
@@ -87,17 +88,10 @@ def create_app(server: SSEMCPServer) -> Starlette:
     return Starlette(routes=routes)
 
 
-async def startup() -> SSEMCPServer:
-    """Initialize the server during startup."""
-    server = SSEMCPServer()
-    return server
-
-
 def run_server(host: str = "0.0.0.0", port: int = 9090) -> None:
     """Run the MCP server with SSE transport."""
-    import asyncio
 
-    server = asyncio.run(startup())
+    server = SSEMCPServer()
 
     app = create_app(server)
     logger.info(f"SSE server listening on http://{host}:{port}/sse")
