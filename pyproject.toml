@@ -72,8 +72,8 @@ exclude_lines = [
 ]
 
 [project.scripts]
-root_sse = "root_signals_mcp.sse_server:main"
-root_stdio = "root_signals_mcp.stdio_server:main"
+sse = "root_signals_mcp.sse_server:main"
+stdio = "root_signals_mcp.stdio_server:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

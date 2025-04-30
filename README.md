@@ -57,6 +57,7 @@ The server exposes the following tools:
 
 #### 2. Run the MCP Server
 
+#### 4. see (recommended)
 ```bash
 docker run -e ROOT_SIGNALS_API_KEY=<your_key> -p 0.0.0.0:9090:9090 --name=rs-mcp -d ghcr.io/root-signals/root-signals-mcp:latest
 ```
@@ -83,6 +84,29 @@ From all other clients that support SSE transport - add the server to your confi
     "mcpServers": {
         "root-signals": {
             "url": "http://localhost:9090/sse"
+        }
+    }
+}
+```
+
+
+#### stdio
+
+```bash
+uvx run --from git+https://github.com/root-signals/root-signals-mcp.git stdio
+```
+
+In cursor / claude desktop etc:
+
+```yaml
+{
+    "mcpServers": {
+        "root-signals": {
+            "command": "uvx",
+            "args": ["--from", "git+https://github.com/root-signals/root-signals-mcp.git", "stdio"],
+            "env": {
+                "ROOT_SIGNALS_API_KEY": "<myAPIKey>"
+            }
         }
     }
 }

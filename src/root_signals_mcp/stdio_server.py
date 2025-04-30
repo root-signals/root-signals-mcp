@@ -39,27 +39,53 @@ class StdioMCPServer:
             self._register_tool_handler(tool.name)
 
     def _register_tool_handler(self, tool_name: str) -> None:
-        """Register a handler for a specific tool."""
+        """Register a handler for a specific tool.
 
-        async def handler(**kwargs) -> str:
-            """Generic handler for all tool calls."""
-            logger.debug(f"Handling tool {tool_name}")
-            result = await self.core.call_tool(tool_name, kwargs)
+        For tools that **do not** expect any parameters (e.g. ``list_evaluators``)
+        we register a no-arg handler so that callers aren't forced to send an
+        empty ``{}`` payload.  For the remaining tools we fall back to a
+        generic ``**kwargs`` handler.
+        """
 
-            if result and len(result) > 0 and result[0].type == "text":
-                logger.debug(f"{tool_name} result (truncated): {result[0].text[:100]}...")
-                return result[0].text
+        request_model_cls = tool_catalogue.get_request_model(tool_name)
+        expects_parameters = bool(request_model_cls and request_model_cls.model_fields)
 
-            error_msg = json.dumps({"error": f"Failed to execute {tool_name}"})
-            logger.error(f"Failed to execute {tool_name}: {error_msg}")
-            return error_msg
+        if expects_parameters:
 
-        handler.__name__ = tool_name
+            async def handler(**kwargs):  # type: ignore[valid-type]
+                logger.debug("Handling tool %s with kwargs %s", tool_name, kwargs)
+                result = await self.core.call_tool(tool_name, kwargs)
+
+                if result and result[0].type == "text":
+                    logger.debug("%s result (truncated): %s...", tool_name, result[0].text[:100])
+                    return result[0].text
+
+                error_msg = json.dumps({"error": f"Failed to execute {tool_name}"})
+                logger.error("Failed to execute %s: %s", tool_name, error_msg)
+                return error_msg
+
+        else:
+
+            async def handler():  # type: ignore[valid-type]
+                logger.debug("Handling parameter-less tool %s", tool_name)
+                result = await self.core.call_tool(tool_name, {})
+
+                if result and result[0].type == "text":
+                    logger.debug("%s result (truncated): %s...", tool_name, result[0].text[:100])
+                    return result[0].text
+
+                error_msg = json.dumps({"error": f"Failed to execute {tool_name}"})
+                logger.error("Failed to execute %s: %s", tool_name, error_msg)
+                return error_msg
+
+        # Preserve function metadata for FastMCP / documentation generation
+        handler.__name__ = tool_name  # type: ignore[attr-defined]
 
         tool_def = next((t for t in tool_catalogue.get_tools() if t.name == tool_name), None)
         if tool_def:
-            handler.__doc__ = tool_def.description
+            handler.__doc__ = tool_def.description  # type: ignore[attr-defined]
 
+        # Finally register the tool with FastMCP
         self.mcp.tool()(handler)
 
     def run(self) -> None:
@@ -80,7 +106,6 @@ def main() -> None:
 
         ready_message = "RootSignals MCP Server (stdio) ready"
         logger.info(ready_message)
-        print(ready_message, file=sys.stderr, flush=True)
 
         server = StdioMCPServer()
         server.run()
