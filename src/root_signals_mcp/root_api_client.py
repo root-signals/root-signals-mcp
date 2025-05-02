@@ -6,13 +6,14 @@ replacing the official SDK with a minimal implementation for our specific needs.
 
 import logging
 from datetime import datetime
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import httpx
 
 from root_signals_mcp.schema import (
     EvaluationResponse,
     EvaluatorInfo,
+    JudgeInfo,
 )
 from root_signals_mcp.settings import settings
 
@@ -48,8 +49,8 @@ class ResponseValidationError(Exception):
         super().__init__(f"Response validation error: {message}")
 
 
-class RootSignalsEvaluatorRepository:
-    """HTTP client for the RootSignals API."""
+class RootSignalsRepositoryBase:
+    """Base class for RootSignals API clients."""
 
     def __init__(
         self,
@@ -144,7 +145,75 @@ class RootSignalsEvaluatorRepository:
                 logger.error(f"Request error: {str(e)}")
                 raise RootSignalsAPIError(0, f"Connection error: {str(e)}") from e
 
-    async def list_evaluators(self, max_count: int | None = None) -> list[EvaluatorInfo]:  # noqa: PLR0915, PLR0912
+    async def _fetch_paginated_results(  # noqa: PLR0915, PLR0912
+        self,
+        initial_url: str,
+        max_to_fetch: int,
+        resource_type: Literal["evaluators", "judges"],
+        url_params: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:  # noqa: PLR0915, PLR0912
+        items_raw: list[dict[str, Any]] = []
+        next_page_url = initial_url
+
+        while next_page_url and len(items_raw) < max_to_fetch:
+            if next_page_url.startswith("http"):
+                next_page_url = "/" + next_page_url.split("/", 3)[3]
+
+            response = await self._make_request("GET", next_page_url)
+            logger.debug(f"Raw {resource_type} response: {response}")
+
+            if isinstance(response, dict):
+                next_page_url = response.get("next", "")
+
+                # Preserve any specified URL parameters
+                if next_page_url and url_params:
+                    for param_name, param_value in url_params.items():
+                        if param_value is not None and f"{param_name}=" not in next_page_url:
+                            if "?" in next_page_url:
+                                next_page_url += f"&{param_name}={param_value}"
+                            else:
+                                next_page_url += f"?{param_name}={param_value}"
+
+                if "results" in response and isinstance(response["results"], list):
+                    current_page_items = response["results"]
+                    logger.debug(
+                        f"Found {len(current_page_items)} {resource_type} in 'results' field"
+                    )
+                else:
+                    raise ResponseValidationError(
+                        "Could not find 'results' field in response", response
+                    )
+            elif isinstance(response, list):
+                logger.debug(f"Response is a direct list of {resource_type}")
+                current_page_items = response
+                next_page_url = ""
+            else:
+                raise ResponseValidationError(
+                    f"Expected response to be a dict or list, got {type(response).__name__}",
+                    cast(dict[str, Any], response),
+                )
+
+            items_raw.extend(current_page_items)
+            logger.info(
+                f"Fetched {len(current_page_items)} more {resource_type}, total now: {len(items_raw)}"
+            )
+
+            if len(current_page_items) == 0:
+                logger.debug("Received empty page, stopping pagination")
+                break
+
+        if len(items_raw) > max_to_fetch:
+            items_raw = items_raw[:max_to_fetch]
+            logger.debug(f"Trimmed results to {max_to_fetch} {resource_type}")
+
+        logger.info(f"Found {len(items_raw)} {resource_type} total after pagination")
+        return items_raw
+
+
+class RootSignalsEvaluatorRepository(RootSignalsRepositoryBase):
+    """HTTP client for the RootSignals Evaluators API."""
+
+    async def list_evaluators(self, max_count: int | None = None) -> list[EvaluatorInfo]:
         """List all available evaluators with pagination support.
 
         Args:
@@ -157,54 +226,14 @@ class RootSignalsEvaluatorRepository:
             ResponseValidationError: If a required field is missing in any evaluator
         """
         max_to_fetch = max_count if max_count is not None else settings.max_evaluators
-        evaluators_raw: list[dict[str, Any]] = []
-
         page_size = min(max_to_fetch, 40)
-        next_page_url = f"/v1/evaluators/?page_size={page_size}"
+        initial_url = f"/v1/evaluators?page_size={page_size}"
 
-        while next_page_url and len(evaluators_raw) < max_to_fetch:
-            if next_page_url.startswith("http"):
-                next_page_url = "/" + next_page_url.split("/", 3)[3]
-
-            response = await self._make_request("GET", next_page_url)
-            logger.debug(f"Raw evaluators response: {response}")
-
-            if isinstance(response, dict):
-                next_page_url = response.get("next", "")
-
-                if "results" in response and isinstance(response["results"], list):
-                    current_page_evaluators = response["results"]
-                    logger.debug(
-                        f"Found {len(current_page_evaluators)} evaluators in 'results' field"
-                    )
-                else:
-                    raise ResponseValidationError(
-                        "Could not find 'results' field in response", response
-                    )
-            elif isinstance(response, list):
-                logger.debug("Response is a direct list of evaluators")
-                current_page_evaluators = response
-                next_page_url = ""
-            else:
-                raise ResponseValidationError(
-                    f"Expected response to be a dict or list, got {type(response).__name__}",
-                    cast(dict[str, Any], response),
-                )
-
-            evaluators_raw.extend(current_page_evaluators)
-            logger.info(
-                f"Fetched {len(current_page_evaluators)} more evaluators, total now: {len(evaluators_raw)}"
-            )
-
-            if len(current_page_evaluators) == 0:
-                logger.debug("Received empty page, stopping pagination")
-                break
-
-        if len(evaluators_raw) > max_to_fetch:
-            evaluators_raw = evaluators_raw[:max_to_fetch]
-            logger.debug(f"Trimmed results to {max_to_fetch} evaluators")
-
-        logger.info(f"Found {len(evaluators_raw)} evaluators total after pagination")
+        evaluators_raw = await self._fetch_paginated_results(
+            initial_url=initial_url,
+            max_to_fetch=max_to_fetch,
+            resource_type="evaluators",
+        )
 
         evaluators = []
         for i, evaluator_data in enumerate(evaluators_raw):
@@ -358,3 +387,66 @@ class RootSignalsEvaluatorRepository:
                 f"Invalid evaluation response format: {str(e)}",
                 response_data,
             ) from e
+
+
+class RootSignalsJudgeRepository(RootSignalsRepositoryBase):
+    """HTTP client for the RootSignals Judges API."""
+
+    async def list_judges(self, max_count: int | None = None) -> list[JudgeInfo]:
+        """List all available judges with pagination support.
+
+        Args:
+            max_count: Maximum number of judges to fetch (defaults to settings.max_judges)
+
+        Returns:
+            List of judge information
+
+        Raises:
+            ResponseValidationError: If a required field is missing in any judge
+        """
+        max_to_fetch = max_count if max_count is not None else settings.max_judges
+        page_size = min(max_to_fetch, 40)
+        initial_url = (
+            f"/beta/judges?page_size={page_size}&show_global={settings.show_public_judges}"
+        )
+
+        url_params = {"show_global": settings.show_public_judges}
+
+        judges_raw = await self._fetch_paginated_results(
+            initial_url=initial_url,
+            max_to_fetch=max_to_fetch,
+            resource_type="judges",
+            url_params=url_params,
+        )
+
+        judges = []
+        for i, judge_data in enumerate(judges_raw):
+            try:
+                logger.debug(f"Processing judge {i}: {judge_data}")
+
+                id_value = judge_data["id"]
+                name_value = judge_data["name"]
+                created_at = judge_data["created_at"]
+
+                if isinstance(created_at, datetime):
+                    created_at = created_at.isoformat()
+
+                description = judge_data.get("intent")
+
+                judge = JudgeInfo(
+                    id=id_value,
+                    name=name_value,
+                    created_at=created_at,
+                    description=description,
+                )
+                judges.append(judge)
+            except KeyError as e:
+                missing_field = str(e).strip("'")
+                logger.warning(f"Judge at index {i} missing required field: '{missing_field}'")
+                logger.warning(f"Judge data: {judge_data}")
+                raise ResponseValidationError(
+                    f"Judge at index {i} missing required field: '{missing_field}'",
+                    judge_data,
+                ) from e
+
+        return judges

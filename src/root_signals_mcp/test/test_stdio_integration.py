@@ -80,6 +80,27 @@ async def test_direct_core_list_evaluators() -> None:
 
 
 @pytest.mark.asyncio
+async def test_direct_core_list_judges() -> None:
+    """Test calling the list_judges tool directly from the RootMCPServerCore."""
+    from root_signals_mcp.core import RootMCPServerCore
+
+    logger.info("Testing direct core list_judges")
+    core = RootMCPServerCore()
+
+    result = await core.call_tool("list_judges", {})
+
+    assert len(result) > 0, "No content in response"
+    text_content = result[0]
+    assert text_content.type == "text", "Response is not text type"
+
+    judges_response = json.loads(text_content.text)
+
+    assert "judges" in judges_response, "No judges in response"
+    judges = judges_response["judges"]
+    assert len(judges) > 0, "No judges found"
+
+
+@pytest.mark.asyncio
 async def test_stdio_client_list_tools() -> None:
     """Use the upstream MCP stdio client to talk to our stdio server and list tools.
 
@@ -228,3 +249,27 @@ async def test_stdio_client_call_tool_list_evaluators() -> None:
             evaluators_data = json.loads(evaluators_json)
 
             assert "evaluators" in evaluators_data and len(evaluators_data["evaluators"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_stdio_client_call_tool_list_judges() -> None:
+    """Verify that calling *list_judges* via the stdio client returns JSON."""
+
+    server_env = os.environ.copy()
+    server_env["ROOT_SIGNALS_API_KEY"] = settings.root_signals_api_key.get_secret_value()
+
+    server_params = StdioServerParameters(  # type: ignore[call-arg]
+        command=sys.executable,
+        args=["-m", "root_signals_mcp.stdio_server"],
+        env=server_env,
+    )
+
+    async with stdio_client(server_params) as (read_stream, write_stream):  # type: ignore[attr-defined]
+        async with ClientSession(read_stream, write_stream) as session:  # type: ignore
+            await session.initialize()
+
+            call_result = await session.call_tool("list_judges", {})
+            judges_json = _extract_text_payload(call_result)
+            judges_data = json.loads(judges_json)
+
+            assert "judges" in judges_data and len(judges_data["judges"]) > 0

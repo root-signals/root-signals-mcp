@@ -9,6 +9,7 @@ from root_signals_mcp.schema import (
     EvaluationRequest,
     EvaluationRequestByName,
     ListEvaluatorsRequest,
+    ListJudgesRequest,
     RAGEvaluationByNameRequest,
     RAGEvaluationRequest,
 )
@@ -48,10 +49,15 @@ def get_tools() -> list[Tool]:
             description="Evaluate code against repository coding policy documents using a dedicated RootSignals evaluator",
             inputSchema=CodingPolicyAdherenceEvaluationRequest.model_json_schema(),
         ),
+        Tool(
+            name="list_judges",
+            description="List all available judges from RootSignals. Judge is a collection of evaluators forming LLM-as-a-judge.",
+            inputSchema=ListJudgesRequest.model_json_schema(),
+        ),
     ]
 
 
-def get_request_model(tool_name: str):
+def get_request_model(tool_name: str) -> type | None:
     """Return the Pydantic *request* model class for a given tool.
 
     This is useful for validating the *arguments* dict passed to
@@ -67,6 +73,7 @@ def get_request_model(tool_name: str):
         "run_evaluation_by_name": EvaluationRequestByName,
         "run_rag_evaluation_by_name": RAGEvaluationByNameRequest,
         "run_coding_policy_adherence": CodingPolicyAdherenceEvaluationRequest,
+        "list_judges": ListJudgesRequest,
     }
 
     return mapping.get(tool_name)

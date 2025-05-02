@@ -17,13 +17,16 @@ from mcp.types import TextContent, Tool
 
 from root_signals_mcp import tools as tool_catalogue
 from root_signals_mcp.evaluator import EvaluatorService
+from root_signals_mcp.judge import JudgeService
 from root_signals_mcp.schema import (
     CodingPolicyAdherenceEvaluationRequest,
     EvaluationRequest,
     EvaluationRequestByName,
     EvaluationResponse,
     EvaluatorsListResponse,
+    JudgesListResponse,
     ListEvaluatorsRequest,
+    ListJudgesRequest,
     RAGEvaluationByNameRequest,
     RAGEvaluationRequest,
     UnknownToolRequest,
@@ -39,6 +42,7 @@ _Handler = Callable[[Any], Awaitable[Any]]
 class RootMCPServerCore:  # noqa: D101
     def __init__(self) -> None:
         self.evaluator_service = EvaluatorService()
+        self.judge_service = JudgeService()
         self.app = Server("RootSignals Evaluators")
 
         @self.app.list_tools()
@@ -56,6 +60,7 @@ class RootMCPServerCore:  # noqa: D101
             "run_evaluation_by_name": self._handle_run_evaluation_by_name,
             "run_rag_evaluation_by_name": self._handle_run_rag_evaluation_by_name,
             "run_coding_policy_adherence": self._handle_coding_style_evaluation,
+            "list_judges": self._handle_list_judges,
         }
 
     # ---------------------------------------------------------------------
@@ -152,3 +157,8 @@ class RootMCPServerCore:  # noqa: D101
         )
 
         return await self.evaluator_service.run_rag_evaluation(rag_request)
+
+    async def _handle_list_judges(self, _params: ListJudgesRequest) -> JudgesListResponse:
+        """Handle list_judges tool call."""
+        logger.debug("Handling list_judges request")
+        return await self.judge_service.list_judges()

@@ -195,3 +195,29 @@ class EvaluatorsListResponse(BaseRootSignalsModel):
     """List of evaluators returned by `list_evaluators`."""
 
     evaluators: list[EvaluatorInfo] = Field(..., description="List of evaluators")
+
+
+class ListJudgesRequest(BaseToolRequest):
+    """Request model for listing judges.
+
+    This is an empty request as list_judges doesn't require any parameters.
+    """
+
+    pass
+
+
+class JudgeInfo(BaseRootSignalsModel):
+    """
+    Model for judge information.
+    """
+
+    name: str = Field(..., description="Name of the judge")
+    id: str = Field(..., description="ID of the judge")
+    created_at: str = Field(..., description="Creation timestamp of the judge")
+    description: str | None = Field(None, description="Description of the judge")
+
+
+class JudgesListResponse(BaseRootSignalsModel):
+    """Model for judges list response."""
+
+    judges: list[JudgeInfo] = Field(..., description="List of judges")

@@ -224,3 +224,12 @@ class RootSignalsMCPClient:
         }
 
         return await self.call_tool("run_coding_policy_adherence", arguments)
+
+    async def list_judges(self) -> list[dict[str, Any]]:
+        """List available judges from the RootSignals API.
+
+        Returns:
+            List of available judges
+        """
+        result = await self.call_tool("list_judges", {})
+        return result.get("judges", [])  # type: ignore

@@ -47,6 +47,7 @@ async def test_list_tools(compose_up_mcp_server: Any) -> None:
             "run_evaluation",
             "run_rag_evaluation",
             "run_coding_policy_adherence",
+            "list_judges",
         }
 
         assert expected_tools.issubset(tool_names), f"Missing expected tools. Found: {tool_names}"
@@ -68,6 +69,23 @@ async def test_list_evaluators(compose_up_mcp_server: Any) -> None:
 
         assert len(evaluators) > 0, "No evaluators found"
         logger.info(f"Found {len(evaluators)} evaluators")
+    finally:
+        await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_list_judges(compose_up_mcp_server: Any) -> None:
+    """Test listing judges via SSE transport."""
+    logger.info("Connecting to MCP server")
+    client: RootSignalsMCPClient = RootSignalsMCPClient()
+
+    try:
+        await client.connect()
+
+        judges: list[dict[str, Any]] = await client.list_judges()
+
+        assert len(judges) > 0, "No judges found"
+        logger.info(f"Found {len(judges)} judges")
     finally:
         await client.disconnect()
 
