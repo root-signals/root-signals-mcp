@@ -108,7 +108,7 @@ class RootSignalsMCPClient:
         if not text_content:
             raise ValueError("No text content found in the tool response")
 
-        return json.loads(text_content.text)
+        return json.loads(text_content.text)  # type: ignore
 
     async def list_evaluators(self) -> list[dict[str, Any]]:
         """List available evaluators from the RootSignals API.
@@ -117,7 +117,7 @@ class RootSignalsMCPClient:
             List of available evaluators
         """
         result = await self.call_tool("list_evaluators", {})
-        return result.get("evaluators", [])
+        return result.get("evaluators", [])  # type: ignore
 
     async def run_evaluation(
         self, evaluator_id: str, request: str, response: str
@@ -233,3 +233,26 @@ class RootSignalsMCPClient:
         """
         result = await self.call_tool("list_judges", {})
         return result.get("judges", [])  # type: ignore
+
+    async def run_judge(
+        self, judge_id: str, judge_name: str | None, request: str, response: str
+    ) -> dict[str, Any]:
+        """Run a judge by ID.
+
+        Args:
+            judge_id: ID of the judge to run
+            judge_name: Name of the judge to run
+            request: The user request/query
+            response: The model's response to evaluate
+
+        Returns:
+            Evaluation result with score and justification
+        """
+        arguments = {
+            "judge_id": judge_id,
+            "judge_name": judge_name,
+            "request": request,
+            "response": response,
+        }
+
+        return await self.call_tool("run_judge", arguments)

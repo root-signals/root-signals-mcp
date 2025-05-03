@@ -474,3 +474,38 @@ async def test_sse_server_unknown_tool_request__explicitly_allows_any_fields() -
     assert isinstance(empty_request, UnknownToolRequest), (
         "Empty request should be valid UnknownToolRequest instance"
     )
+
+
+@pytest.mark.asyncio
+async def test_call_tool_run_judge(mcp_server: Any) -> None:
+    """Test calling the run_judge tool."""
+    list_result = await mcp_server.call_tool("list_judges", {})
+    judges_data = json.loads(list_result[0].text)
+
+    judge = next(iter(judges_data["judges"]), None)
+
+    assert judge is not None, "No judge found"
+
+    logger.info(f"Using judge: {judge['name']}")
+
+    arguments = {
+        "judge_id": judge["id"],
+        "judge_name": judge["name"],
+        "request": "What is the capital of France?",
+        "response": "The capital of France is Paris, which is known as the City of Light.",
+    }
+
+    result = await mcp_server.call_tool("run_judge", arguments)
+
+    assert len(result) == 1, "Expected single result content"
+    assert result[0].type == "text", "Expected text content"
+
+    response_data = json.loads(result[0].text)
+    assert "evaluator_results" in response_data, "Response missing evaluator_results"
+    assert len(response_data["evaluator_results"]) > 0, "No evaluator results in response"
+    assert "score" in response_data["evaluator_results"][0], "Response missing score"
+    assert "justification" in response_data["evaluator_results"][0], (
+        "Response missing justification"
+    )
+
+    logger.info(f"Judge completed with score: {response_data['evaluator_results'][0]['score']}")

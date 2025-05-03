@@ -203,6 +203,54 @@ async def test_stdio_client_run_evaluation_by_name() -> None:
             logger.info(f"Evaluation completed with score: {evaluation_data['score']}")
 
 
+@pytest.mark.asyncio
+async def test_stdio_client_run_judge() -> None:
+    """Test running a judge using the stdio client."""
+
+    server_env = os.environ.copy()
+    server_env["ROOT_SIGNALS_API_KEY"] = settings.root_signals_api_key.get_secret_value()
+
+    server_params = StdioServerParameters(  # type: ignore[call-arg]
+        command=sys.executable,
+        args=["-m", "root_signals_mcp.stdio_server"],
+        env=server_env,
+    )
+
+    async with stdio_client(server_params) as (read_stream, write_stream):  # type: ignore[attr-defined]
+        async with ClientSession(read_stream, write_stream) as session:  # type: ignore
+            await session.initialize()
+
+            call_result = await session.call_tool("list_judges", {})
+            judges_json = _extract_text_payload(call_result)
+            judges_data = json.loads(judges_json)
+
+            assert "judges" in judges_data and len(judges_data["judges"]) > 0
+
+            judge = judges_data["judges"][0]
+
+            call_result = await session.call_tool(
+                "run_judge",
+                {
+                    "judge_id": judge["id"],
+                    "request": "What is the capital of France?",
+                    "response": "The capital of France is Paris, which is known as the City of Light.",
+                },
+            )
+
+            assert call_result is not None
+            assert len(call_result.content) > 0
+
+            judge_result_json = _extract_text_payload(call_result)
+            response_data = json.loads(judge_result_json)
+
+            assert "evaluator_results" in response_data, "Response missing evaluator_results"
+            assert len(response_data["evaluator_results"]) > 0, "No evaluator results in response"
+            assert "score" in response_data["evaluator_results"][0], "Response missing score"
+            assert "justification" in response_data["evaluator_results"][0], (
+                "Response missing justification"
+            )
+
+
 # ---------------------------------------------------------------------------
 # Helper utilities
 # ---------------------------------------------------------------------------

@@ -65,7 +65,7 @@ jobs:
       - name: Run integration tests with coverage
         run: |
           uv run python -m pytest -v \
-            --cov=root_mcp_server \
+            --cov=root_signals_mcp \
             --cov-report=xml:integration-coverage.xml \
             --cov-report=term
 

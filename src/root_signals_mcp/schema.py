@@ -221,3 +221,44 @@ class JudgesListResponse(BaseRootSignalsModel):
     """Model for judges list response."""
 
     judges: list[JudgeInfo] = Field(..., description="List of judges")
+
+
+class RunJudgeRequest(BaseToolRequest):
+    """Request model for run_judge tool."""
+
+    judge_id: str = Field(..., description="The ID of the judge to use")
+    judge_name: str | None = Field(
+        None, description="The name of the judge to use. Only for logging purposes."
+    )
+    request: str = Field(..., description="The user query to evaluate")
+    response: str = Field(..., description="The AI assistant's response to evaluate")
+
+    @field_validator("request")
+    @classmethod
+    def validate_request_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Request cannot be empty")
+        return v
+
+    @field_validator("response")
+    @classmethod
+    def validate_response_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Response cannot be empty")
+        return v
+
+
+class JudgeEvaluatorResult(BaseRootSignalsModel):
+    """Model for judge evaluator result."""
+
+    evaluator_name: str = Field(..., description="Name of the evaluator")
+    score: float = Field(..., description="Score of the evaluator")
+    justification: str = Field(..., description="Justification for the score")
+
+
+class RunJudgeResponse(BaseRootSignalsModel):
+    """Model for judge response."""
+
+    evaluator_results: list[JudgeEvaluatorResult] = Field(
+        ..., description="List of evaluator results"
+    )

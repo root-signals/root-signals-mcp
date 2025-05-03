@@ -48,6 +48,7 @@ async def test_list_tools(compose_up_mcp_server: Any) -> None:
             "run_rag_evaluation",
             "run_coding_policy_adherence",
             "list_judges",
+            "run_judge",
         }
 
         assert expected_tools.issubset(tool_names), f"Missing expected tools. Found: {tool_names}"
@@ -361,5 +362,36 @@ async def test_run_coding_policy_adherence(compose_up_mcp_server: Any) -> None:
             "No justification in coding policy adherence evaluation result"
         )
         logger.info(f"Coding policy adherence evaluation completed with score: {result['score']}")
+    finally:
+        await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_run_judge(compose_up_mcp_server: Any) -> None:
+    """Test running a judge via SSE transport."""
+    logger.info("Connecting to MCP server")
+    client: RootSignalsMCPClient = RootSignalsMCPClient()
+
+    try:
+        await client.connect()
+        judges: list[dict[str, Any]] = await client.list_judges()
+
+        judge: dict[str, Any] | None = next(iter(judges), None)
+
+        if not judge:
+            pytest.skip("No judge found")
+
+        logger.info(f"Using judge: {judge['name']}")
+
+        result: dict[str, Any] = await client.run_judge(
+            judge_id=judge["id"],
+            judge_name=judge["name"],
+            request="What is the capital of France?",
+            response="The capital of France is Paris, which is known as the City of Light.",
+        )
+
+        assert "evaluator_results" in result, "No evaluator results in judge result"
+        assert len(result["evaluator_results"]) > 0, "No evaluator results in judge result"
+        logger.info(f"Judge completed with score: {result['evaluator_results'][0]['score']}")
     finally:
         await client.disconnect()
