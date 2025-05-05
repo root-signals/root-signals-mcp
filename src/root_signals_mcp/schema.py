@@ -227,8 +227,9 @@ class RunJudgeRequest(BaseToolRequest):
     """Request model for run_judge tool."""
 
     judge_id: str = Field(..., description="The ID of the judge to use")
-    judge_name: str | None = Field(
-        None, description="The name of the judge to use. Only for logging purposes."
+    judge_name: str = Field(
+        default="-",
+        description="The name of the judge to use. Optional, only for logging purposes.",
     )
     request: str = Field(..., description="The user query to evaluate")
     response: str = Field(..., description="The AI assistant's response to evaluate")
