@@ -124,6 +124,14 @@ async def test_client_list_judges(compose_up_mcp_server: Any) -> None:
         assert "id" in first_judge
         assert "name" in first_judge
 
+        assert "evaluators" in first_judge
+        assert isinstance(first_judge["evaluators"], list)
+        assert len(first_judge["evaluators"]) > 0
+
+        for evaluator in first_judge["evaluators"]:
+            assert "id" in evaluator
+            assert "name" in evaluator
+
         logger.info(f"Found {len(judges)} judges")
         logger.info(f"First judge: {first_judge['name']}")
     finally:
