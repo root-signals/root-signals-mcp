@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/root-signals-root-signals-mcp-badge.png)](https://mseep.ai/app/root-signals-root-signals-mcp)
+
 <h1 align="center">
   <img width="600" alt="Root Signals logo" src="https://app.rootsignals.ai/images/root-signals-color.svg" loading="lazy">
 </h1>
