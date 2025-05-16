@@ -435,11 +435,16 @@ class RootSignalsJudgeRepository(RootSignalsRepositoryBase):
 
                 description = judge_data.get("intent")
 
+                evaluators: list[JudgeInfo.NestedEvaluatorInfo] = []
+                for evaluator_data in judge_data.get("evaluators", []):
+                    evaluators.append(JudgeInfo.NestedEvaluatorInfo.model_validate(evaluator_data))
+
                 judge = JudgeInfo(
                     id=id_value,
                     name=name_value,
                     created_at=created_at,
                     description=description,
+                    evaluators=evaluators,
                 )
                 judges.append(judge)
             except KeyError as e:

@@ -211,9 +211,17 @@ class JudgeInfo(BaseRootSignalsModel):
     Model for judge information.
     """
 
+    class NestedEvaluatorInfo(BaseRootSignalsModel):
+        """Nested evaluator info."""
+
+        name: str = Field(..., description="Name of the evaluator")
+        id: str = Field(..., description="ID of the evaluator")
+        intent: str | None = Field(default="", description="Intent of the evaluator")
+
     name: str = Field(..., description="Name of the judge")
     id: str = Field(..., description="ID of the judge")
     created_at: str = Field(..., description="Creation timestamp of the judge")
+    evaluators: list[NestedEvaluatorInfo] = Field(..., description="List of evaluators")
     description: str | None = Field(None, description="Description of the judge")
 
 
