@@ -71,6 +71,14 @@ class BaseEvaluationRequest(BaseRootSignalsModel):
 
     request: str = Field(..., description="The user query to evaluate")
     response: str = Field(..., description="The AI assistant's response to evaluate")
+    contexts: list[str] | None = Field(
+        default=None,
+        description="List of required context strings for evaluation. Used only for evaluators that have 'contexts' defined in their inputs.",
+    )
+    expected_output: str | None = Field(
+        default=None,
+        description="The expected LLM response. Used only for evaluators that have 'expected_output' defined in their inputs.",
+    )
 
     @field_validator("request", "response")
     @classmethod
@@ -125,24 +133,6 @@ class EvaluationRequest(BaseEvaluationRequest):
     evaluator_id: str = Field(..., description="The ID of the evaluator to use")
 
 
-class RAGEvaluationRequest(EvaluationRequest):
-    """
-    Model for RAG evaluators that require contexts to be sent"""
-
-    contexts: list[str] = Field(
-        default=[], description="List of required context strings for evaluation"
-    )
-
-
-class RAGEvaluationByNameRequest(EvaluationRequestByName):
-    """
-    Model for RAG evaluators that require contexts to be sent"""
-
-    contexts: list[str] = Field(
-        default=[], description="List of required context strings for evaluation"
-    )
-
-
 class CodingPolicyAdherenceEvaluationRequest(BaseToolRequest):
     """Request model for coding policy adherence evaluation tool."""
 
@@ -172,6 +162,23 @@ class EvaluationResponse(BaseRootSignalsModel):
     cost: float | int | None = Field(None, description="Cost of the evaluation")
 
 
+class ArrayInputItem(BaseModel):
+    type: str
+
+
+class RequiredInput(BaseModel):
+    type: str
+    items: ArrayInputItem | None = None
+
+
+INPUTS_DESCRIPTION = """
+Schema defining the input parameters required for running the evaluator (run_evaluation parameters).
+If contexts are required, it means this is a RAG evaluator and you must pass contexts such as policy files, examples, etc.
+If expected_output is required, it means this is a gold standard output evaluator and you must pass the expected output.
+Request and response are required for almost all evaluators. Request is the user query and response is the model's response to evaluate.
+"""
+
+
 class EvaluatorInfo(BaseRootSignalsModel):
     """
     Model for evaluator information.
@@ -183,12 +190,18 @@ class EvaluatorInfo(BaseRootSignalsModel):
     id: str = Field(..., description="ID of the evaluator")
     created_at: str = Field(..., description="Creation timestamp of the evaluator")
     intent: str | None = Field(None, description="Intent of the evaluator")
-    requires_contexts: bool | None = Field(
-        False, description="Whether the evaluator requires context"
+    inputs: dict[str, RequiredInput] = Field(
+        ...,
+        description=INPUTS_DESCRIPTION,
     )
-    requires_expected_output: bool | None = Field(
-        False, description="Whether the evaluator requires gold standard output"
-    )
+
+    @property
+    def requires_contexts(self) -> bool:
+        return self.inputs.get("contexts") is not None
+
+    @property
+    def requires_expected_output(self) -> bool:
+        return self.inputs.get("expected_output") is not None
 
 
 class EvaluatorsListResponse(BaseRootSignalsModel):

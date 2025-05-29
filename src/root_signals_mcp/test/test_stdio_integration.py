@@ -43,8 +43,6 @@ async def test_direct_core_list_tools() -> None:
         "list_evaluators",
         "run_evaluation",
         "run_evaluation_by_name",
-        "run_rag_evaluation",
-        "run_rag_evaluation_by_name",
         "run_coding_policy_adherence",
     }
 
@@ -128,8 +126,6 @@ async def test_stdio_client_list_tools() -> None:
                 "list_evaluators",
                 "run_evaluation",
                 "run_evaluation_by_name",
-                "run_rag_evaluation",
-                "run_rag_evaluation_by_name",
                 "run_coding_policy_adherence",
             }
 

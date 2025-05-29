@@ -70,9 +70,7 @@ async def test_client_list_tools(compose_up_mcp_server: Any) -> None:
             "list_judges",
             "run_judge",
             "run_evaluation",
-            "run_rag_evaluation",
             "run_evaluation_by_name",
-            "run_rag_evaluation_by_name",
             "run_coding_policy_adherence",
         }
         assert expected_tools.issubset(set(tool_names)), (
@@ -218,7 +216,7 @@ async def test_client_run_evaluation_by_name(compose_up_mcp_server: Any) -> None
         evaluators = await client.list_evaluators()
 
         standard_evaluator = next(
-            (e for e in evaluators if not e.get("requires_contexts", False)), None
+            (e for e in evaluators if not e.get("inputs", {}).get("contexts")), None
         )
 
         assert standard_evaluator is not None, "No standard evaluator found"
@@ -242,7 +240,7 @@ async def test_client_run_evaluation_by_name(compose_up_mcp_server: Any) -> None
 @pytest.mark.asyncio
 async def test_client_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
     """Test client run_rag_evaluation method with a real server."""
-    logger.info("Testing run_rag_evaluation")
+    logger.info("Testing run_evaluation with contexts")
     client = RootSignalsMCPClient()
 
     try:
@@ -265,7 +263,7 @@ async def test_client_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
 
         logger.info(f"Using evaluator: {rag_evaluator['name']}")
 
-        result = await client.run_rag_evaluation(
+        result = await client.run_evaluation(
             evaluator_id=rag_evaluator["id"],
             request="What is the capital of France?",
             response="The capital of France is Paris, which is known as the City of Light.",
@@ -286,7 +284,7 @@ async def test_client_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
 @pytest.mark.asyncio
 async def test_client_run_rag_evaluation_by_name(compose_up_mcp_server: Any) -> None:
     """Test client run_rag_evaluation_by_name method with a real server."""
-    logger.info("Testing run_rag_evaluation_by_name")
+    logger.info("Testing run_evaluation_by_name with contexts")
     client = RootSignalsMCPClient()
 
     try:

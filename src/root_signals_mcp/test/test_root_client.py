@@ -60,10 +60,8 @@ async def test_list_evaluators() -> None:
     assert first_evaluator.name, "Evaluator missing name"
     assert first_evaluator.created_at, "Evaluator missing created_at"
 
-    assert isinstance(first_evaluator.requires_contexts, bool), "requires_contexts is not a boolean"
-    assert isinstance(first_evaluator.requires_expected_output, bool), (
-        "requires_expected_output is not a boolean"
-    )
+    assert first_evaluator.inputs, "Evaluator missing inputs"
+    assert first_evaluator.inputs != {}, "Evaluator inputs are empty"
 
     logger.info(f"Found {len(evaluators)} evaluators")
     logger.info(f"First evaluator: {first_evaluator.name} (ID: {first_evaluator.id})")
@@ -185,7 +183,8 @@ async def test_run_evaluator_with_expected_output() -> None:
 
     evaluators = await client.list_evaluators()
     eval_with_expected = next(
-        (e for e in evaluators if e.requires_expected_output), next((e for e in evaluators), None)
+        (e for e in evaluators if e.inputs.get("expected_output") is not None),
+        next((e for e in evaluators), None),
     )
 
     if not eval_with_expected:
@@ -196,6 +195,7 @@ async def test_run_evaluator_with_expected_output() -> None:
             evaluator_id=eval_with_expected.id,
             request="What is the capital of France?",
             response="The capital of France is Paris.",
+            contexts=["Paris is the capital of France."],
             expected_output="Paris is the capital of France.",
         )
 
@@ -328,8 +328,7 @@ async def test_evaluator_missing_fields() -> None:
                     "id": "valid-id",
                     "name": "Valid Evaluator",
                     "created_at": "2023-01-01T00:00:00Z",
-                    "requires_contexts": False,
-                    "requires_expected_output": False,
+                    "inputs": {},
                 },
                 {
                     "created_at": "2023-01-01T00:00:00Z",
@@ -355,8 +354,7 @@ async def test_evaluator_missing_fields() -> None:
                     "id": "valid-id",
                     "name": "Valid Evaluator",
                     "created_at": "2023-01-01T00:00:00Z",
-                    "requires_contexts": False,
-                    "requires_expected_output": False,
+                    "inputs": {},
                 }
             ]
         }

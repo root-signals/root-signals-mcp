@@ -12,12 +12,12 @@ from root_signals_mcp.root_api_client import (
     RootSignalsAPIError,
 )
 from root_signals_mcp.schema import (
+    ArrayInputItem,
     EvaluationRequest,
     EvaluationRequestByName,
     EvaluationResponse,
     EvaluatorInfo,
-    RAGEvaluationByNameRequest,
-    RAGEvaluationRequest,
+    RequiredInput,
 )
 
 logger = logging.getLogger("test_evaluator")
@@ -93,16 +93,16 @@ async def test_get_evaluator_by_id_returns_correct_evaluator(mock_api_client: Ma
             name="Evaluator 1",
             created_at="2024-01-01T00:00:00Z",
             intent=None,
-            requires_contexts=False,
-            requires_expected_output=False,
+            inputs={},
         ),
         EvaluatorInfo(
             id="eval-2",
             name="Evaluator 2",
             created_at="2024-01-02T00:00:00Z",
             intent=None,
-            requires_contexts=True,
-            requires_expected_output=False,
+            inputs={
+                "contexts": RequiredInput(type="array", items=ArrayInputItem(type="string")),
+            },
         ),
     ]
     mock_api_client.list_evaluators.return_value = mock_evaluators
@@ -124,16 +124,16 @@ async def test_get_evaluator_by_id_returns_none_when_not_found(mock_api_client: 
             name="Evaluator 1",
             created_at="2024-01-01T00:00:00Z",
             intent=None,
-            requires_contexts=False,
-            requires_expected_output=False,
+            inputs={},
         ),
         EvaluatorInfo(
             id="eval-2",
             name="Evaluator 2",
             created_at="2024-01-02T00:00:00Z",
             intent=None,
-            requires_contexts=True,
-            requires_expected_output=False,
+            inputs={
+                "contexts": RequiredInput(type="array", items=ArrayInputItem(type="string")),
+            },
         ),
     ]
     mock_api_client.list_evaluators.return_value = mock_evaluators
@@ -157,13 +157,19 @@ async def test_run_evaluation_passes_correct_parameters(mock_api_client: MagicMo
     mock_api_client.run_evaluator.return_value = mock_response
 
     request = EvaluationRequest(
-        evaluator_id="eval-123", request="Test request", response="Test response"
+        evaluator_id="eval-123",
+        request="Test request",
+        response="Test response",
+        contexts=["Test context"],
     )
 
     result = await service.run_evaluation(request)
 
     mock_api_client.run_evaluator.assert_called_once_with(
-        evaluator_id="eval-123", request="Test request", response="Test response"
+        evaluator_id="eval-123",
+        request="Test request",
+        response="Test response",
+        contexts=["Test context"],
     )
 
     assert result.evaluator_name == "Test Evaluator"
@@ -185,53 +191,24 @@ async def test_run_evaluation_by_name_passes_correct_parameters(mock_api_client:
     mock_api_client.run_evaluator_by_name.return_value = mock_response
 
     request = EvaluationRequestByName(
-        evaluator_name="Clarity", request="Test request", response="Test response"
+        evaluator_name="Clarity",
+        request="Test request",
+        response="Test response",
+        contexts=["Test context"],
     )
 
     result = await service.run_evaluation_by_name(request)
 
     mock_api_client.run_evaluator_by_name.assert_called_once_with(
-        evaluator_name="Clarity", request="Test request", response="Test response"
+        evaluator_name="Clarity",
+        request="Test request",
+        response="Test response",
+        contexts=["Test context"],
     )
 
     assert result.evaluator_name == "Test Evaluator"
     assert result.score == 0.95
     assert result.justification == "This is a justification"
-
-
-@pytest.mark.asyncio
-async def test_run_rag_evaluation_with_contexts(mock_api_client: MagicMock) -> None:
-    """Test that contexts are passed correctly in run_rag_evaluation."""
-    service = EvaluatorService()
-    mock_response = EvaluationResponse(
-        evaluator_name="RAG Evaluator",
-        score=0.85,
-        justification="RAG evaluation result",
-        execution_log_id=None,
-        cost=None,
-    )
-    mock_api_client.run_evaluator.return_value = mock_response
-
-    contexts = ["Context 1", "Context 2"]
-    request = RAGEvaluationRequest(
-        evaluator_id="eval-rag-123",
-        request="Test RAG request",
-        response="Test RAG response",
-        contexts=contexts,
-    )
-
-    result = await service.run_rag_evaluation(request)
-
-    mock_api_client.run_evaluator.assert_called_once_with(
-        evaluator_id="eval-rag-123",
-        request="Test RAG request",
-        response="Test RAG response",
-        contexts=contexts,
-    )
-
-    assert result.evaluator_name == "RAG Evaluator"
-    assert result.score == 0.85
-    assert result.justification == "RAG evaluation result"
 
 
 @pytest.mark.asyncio
@@ -251,41 +228,6 @@ async def test_run_evaluation_handles_not_found_error(mock_api_client: MagicMock
 
     assert "Failed to run evaluation" in str(excinfo.value)
     assert "Evaluator not found" in str(excinfo.value)
-
-
-@pytest.mark.asyncio
-async def test_run_rag_evaluation_by_name_with_contexts(mock_api_client: MagicMock) -> None:
-    """Test that contexts are passed correctly in run_rag_evaluation_by_name."""
-    service = EvaluatorService()
-    mock_response = EvaluationResponse(
-        evaluator_name="RAG Evaluator",
-        score=0.85,
-        justification="RAG evaluation result",
-        execution_log_id=None,
-        cost=None,
-    )
-    mock_api_client.run_evaluator_by_name.return_value = mock_response
-
-    contexts = ["Context 1", "Context 2"]
-    request = RAGEvaluationByNameRequest(
-        evaluator_name="Faithfulness",
-        request="Test RAG request",
-        response="Test RAG response",
-        contexts=contexts,
-    )
-
-    result = await service.run_rag_evaluation_by_name(request)
-
-    mock_api_client.run_evaluator_by_name.assert_called_once_with(
-        evaluator_name="Faithfulness",
-        request="Test RAG request",
-        response="Test RAG response",
-        contexts=contexts,
-    )
-
-    assert result.evaluator_name == "RAG Evaluator"
-    assert result.score == 0.85
-    assert result.justification == "RAG evaluation result"
 
 
 @pytest.mark.asyncio
