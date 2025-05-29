@@ -28,7 +28,7 @@ agent_prompt = """
     </instructions>
 
     <acceptance_criteria>
-    - Response candidate must score above 0.7 as indicated by Root Signals evaluators
+    - Response candidate must score above 0.7 as indicated by Root Signals evaluators. Use the contents of the policy and current_state tags as the context parameter.
     - At least 2 evaluators from the list of evaluators have been used on your response candidate
     - If evaluators are not available or give errors, respond to the customer with a temporary apology
     </acceptance_criteria>
