@@ -116,6 +116,7 @@ class EvaluatorService:
                 request=request.request,
                 response=request.response,
                 contexts=request.contexts,
+                expected_output=request.expected_output,
             )
 
             return result
@@ -147,6 +148,7 @@ class EvaluatorService:
                 request=request.request,
                 response=request.response,
                 contexts=request.contexts,
+                expected_output=request.expected_output,
             )
 
             return result

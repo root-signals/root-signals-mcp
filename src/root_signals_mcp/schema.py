@@ -171,14 +171,6 @@ class RequiredInput(BaseModel):
     items: ArrayInputItem | None = None
 
 
-INPUTS_DESCRIPTION = """
-Schema defining the input parameters required for running the evaluator (run_evaluation parameters).
-If contexts are required, it means this is a RAG evaluator and you must pass contexts such as policy files, examples, etc.
-If expected_output is required, it means this is a gold standard output evaluator and you must pass the expected output.
-Request and response are required for almost all evaluators. Request is the user query and response is the model's response to evaluate.
-"""
-
-
 class EvaluatorInfo(BaseRootSignalsModel):
     """
     Model for evaluator information.
@@ -192,7 +184,7 @@ class EvaluatorInfo(BaseRootSignalsModel):
     intent: str | None = Field(None, description="Intent of the evaluator")
     inputs: dict[str, RequiredInput] = Field(
         ...,
-        description=INPUTS_DESCRIPTION,
+        description="Schema defining the input parameters required for running the evaluator (run_evaluation parameters).",
     )
 
     @property

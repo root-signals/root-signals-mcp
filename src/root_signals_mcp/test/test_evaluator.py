@@ -161,6 +161,7 @@ async def test_run_evaluation_passes_correct_parameters(mock_api_client: MagicMo
         request="Test request",
         response="Test response",
         contexts=["Test context"],
+        expected_output="Test expected output",
     )
 
     result = await service.run_evaluation(request)
@@ -170,6 +171,7 @@ async def test_run_evaluation_passes_correct_parameters(mock_api_client: MagicMo
         request="Test request",
         response="Test response",
         contexts=["Test context"],
+        expected_output="Test expected output",
     )
 
     assert result.evaluator_name == "Test Evaluator"
@@ -195,6 +197,7 @@ async def test_run_evaluation_by_name_passes_correct_parameters(mock_api_client:
         request="Test request",
         response="Test response",
         contexts=["Test context"],
+        expected_output="Test expected output",
     )
 
     result = await service.run_evaluation_by_name(request)
@@ -204,6 +207,7 @@ async def test_run_evaluation_by_name_passes_correct_parameters(mock_api_client:
         request="Test request",
         response="Test response",
         contexts=["Test context"],
+        expected_output="Test expected output",
     )
 
     assert result.evaluator_name == "Test Evaluator"

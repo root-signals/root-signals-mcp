@@ -120,7 +120,12 @@ class RootSignalsMCPClient:
         return result.get("evaluators", [])  # type: ignore
 
     async def run_evaluation(
-        self, evaluator_id: str, request: str, response: str, contexts: list[str] | None = None
+        self,
+        evaluator_id: str,
+        request: str,
+        response: str,
+        contexts: list[str] | None = None,
+        expected_output: str | None = None,
     ) -> dict[str, Any]:
         """Run a standard evaluation using a RootSignals evaluator by ID.
 
@@ -129,6 +134,7 @@ class RootSignalsMCPClient:
             request: The user request/query
             response: The model's response to evaluate
             contexts: Optional list of contexts (policy files, examples, etc.) used for generation. Only used for evaluators that require contexts.
+            expected_output: Optional expected LLM response. Only used for evaluators that require expected output.
 
         Returns:
             Evaluation result with score and justification
@@ -138,12 +144,18 @@ class RootSignalsMCPClient:
             "request": request,
             "response": response,
             "contexts": contexts,
+            "expected_output": expected_output,
         }
 
         return await self.call_tool("run_evaluation", arguments)
 
     async def run_evaluation_by_name(
-        self, evaluator_name: str, request: str, response: str, contexts: list[str] | None = None
+        self,
+        evaluator_name: str,
+        request: str,
+        response: str,
+        contexts: list[str] | None = None,
+        expected_output: str | None = None,
     ) -> dict[str, Any]:
         """Run a standard evaluation using a RootSignals evaluator by name.
 
@@ -152,6 +164,7 @@ class RootSignalsMCPClient:
             request: The user request/query
             response: The model's response to evaluate
             contexts: Optional list of contexts (policy files, examples, etc.) used for generation. Only used for evaluators that require contexts.
+            expected_output: Optional expected LLM response. Only used for evaluators that require expected output.
 
         Returns:
             Evaluation result with score and justification
@@ -161,6 +174,7 @@ class RootSignalsMCPClient:
             "request": request,
             "response": response,
             "contexts": contexts,
+            "expected_output": expected_output,
         }
 
         return await self.call_tool("run_evaluation_by_name", arguments)
