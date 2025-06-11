@@ -35,7 +35,6 @@ This project serves as a bridge between Root Signals API and MCP client applicat
 ## Features
 
 - Exposes Root Signals evaluators as MCP tools
-- Supports both standard evaluation and RAG evaluation with contexts
 - Implements SSE for network deployment
 - Compatible with various MCP clients such as [Cursor](https://docs.cursor.com/context/model-context-protocol)
 
@@ -46,8 +45,6 @@ The server exposes the following tools:
 1. `list_evaluators` - Lists all available evaluators on your Root Signals account
 2. `run_evaluation` - Runs a standard evaluation using a specified evaluator ID
 3. `run_evaluation_by_name` - Runs a standard evaluation using a specified evaluator name
-4. `run_rag_evaluation` - Runs a RAG evaluation with contexts using a specified evaluator ID
-5. `run_rag_evaluation_by_name` - Runs a RAG evaluation with contexts using a specified evaluator name
 6. `run_coding_policy_adherence` - Runs a coding policy adherence evaluation using policy documents such as AI rules files
 7. `list_judges` - Lists all available judges on your Root Signals account. A judge is a collection of evaluators forming LLM-as-a-judge.
 8. `run_judge` - Runs a judge using a specified judge ID
@@ -168,7 +165,7 @@ async def main():
         )
         print(f"Evaluation by name score: {result['score']}")
         
-        result = await mcp_client.run_rag_evaluation(
+        result = await mcp_client.run_evaluation(
             evaluator_id="eval-987654321",
             request="What is the capital of France?",
             response="The capital of France is Paris.",
@@ -176,7 +173,7 @@ async def main():
         )
         print(f"RAG evaluation score: {result['score']}")
         
-        result = await mcp_client.run_rag_evaluation_by_name(
+        result = await mcp_client.run_evaluation_by_name(
             evaluator_name="Faithfulness",
             request="What is the capital of France?",
             response="The capital of France is Paris.",

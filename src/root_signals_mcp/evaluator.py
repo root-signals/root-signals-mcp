@@ -16,8 +16,6 @@ from root_signals_mcp.schema import (
     EvaluationResponse,
     EvaluatorInfo,
     EvaluatorsListResponse,
-    RAGEvaluationByNameRequest,
-    RAGEvaluationRequest,
 )
 from root_signals_mcp.settings import settings
 
@@ -117,6 +115,8 @@ class EvaluatorService:
                 evaluator_id=request.evaluator_id,
                 request=request.request,
                 response=request.response,
+                contexts=request.contexts,
+                expected_output=request.expected_output,
             )
 
             return result
@@ -147,6 +147,8 @@ class EvaluatorService:
                 evaluator_name=request.evaluator_name,
                 request=request.request,
                 response=request.response,
+                contexts=request.contexts,
+                expected_output=request.expected_output,
             )
 
             return result
@@ -161,70 +163,3 @@ class EvaluatorService:
         except Exception as e:
             logger.error(f"Error running evaluation by name: {e}", exc_info=settings.debug)
             raise RuntimeError(f"Failed to run evaluation by name: {str(e)}") from e
-
-    async def run_rag_evaluation(self, request: RAGEvaluationRequest) -> EvaluationResponse:
-        """Run a RAG evaluation with contexts asynchronously.
-
-        This method is used by the SSE server which requires async operation.
-
-        Args:
-            evaluator_id: The ID of the evaluator to use.
-            request: The RAG evaluation request parameters.
-
-        Returns:
-            EvaluationResponse: The evaluation results.
-        """
-        try:
-            logger.debug(f"Running RAG evaluation with contexts: {request.contexts}")
-            result = await self.async_client.run_evaluator(
-                evaluator_id=request.evaluator_id,
-                request=request.request,
-                response=request.response,
-                contexts=request.contexts,
-            )
-
-            return result
-        except RootSignalsAPIError as e:
-            logger.error(f"API error running RAG evaluation: {e}", exc_info=settings.debug)
-            raise RuntimeError(f"Failed to run RAG evaluation: {str(e)}") from e
-        except ResponseValidationError as e:
-            logger.error(f"Response validation error: {e}", exc_info=settings.debug)
-            if e.response_data:
-                logger.debug(f"Response data: {e.response_data}")
-            raise RuntimeError(f"Invalid RAG evaluation response: {str(e)}") from e
-        except Exception as e:
-            logger.error(f"Error running RAG evaluation: {e}", exc_info=settings.debug)
-            raise RuntimeError(f"Failed to run RAG evaluation: {str(e)}") from e
-
-    async def run_rag_evaluation_by_name(
-        self, request: RAGEvaluationByNameRequest
-    ) -> EvaluationResponse:
-        """Run a RAG evaluation with contexts using the evaluator's name instead of ID.
-
-        Args:
-            request: The RAG evaluation request parameters with evaluator name.
-
-        Returns:
-            EvaluationResponse: The evaluation results.
-        """
-        try:
-            logger.debug(f"Running RAG evaluation by name with contexts: {request.contexts}")
-            result = await self.async_client.run_evaluator_by_name(
-                evaluator_name=request.evaluator_name,
-                request=request.request,
-                response=request.response,
-                contexts=request.contexts,
-            )
-
-            return result
-        except RootSignalsAPIError as e:
-            logger.error(f"API error running RAG evaluation by name: {e}", exc_info=settings.debug)
-            raise RuntimeError(f"Failed to run RAG evaluation by name: {str(e)}") from e
-        except ResponseValidationError as e:
-            logger.error(f"Response validation error: {e}", exc_info=settings.debug)
-            if e.response_data:
-                logger.debug(f"Response data: {e.response_data}")
-            raise RuntimeError(f"Invalid RAG evaluation response: {str(e)}") from e
-        except Exception as e:
-            logger.error(f"Error running RAG evaluation by name: {e}", exc_info=settings.debug)
-            raise RuntimeError(f"Failed to run RAG evaluation by name: {str(e)}") from e

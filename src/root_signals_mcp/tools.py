@@ -10,8 +10,6 @@ from root_signals_mcp.schema import (
     EvaluationRequestByName,
     ListEvaluatorsRequest,
     ListJudgesRequest,
-    RAGEvaluationByNameRequest,
-    RAGEvaluationRequest,
     RunJudgeRequest,
 )
 
@@ -31,19 +29,9 @@ def get_tools() -> list[Tool]:
             inputSchema=EvaluationRequest.model_json_schema(),
         ),
         Tool(
-            name="run_rag_evaluation",
-            description="Run a RAG evaluation with contexts using a RootSignals evaluator by ID",
-            inputSchema=RAGEvaluationRequest.model_json_schema(),
-        ),
-        Tool(
             name="run_evaluation_by_name",
             description="Run a standard evaluation using a RootSignals evaluator by name",
             inputSchema=EvaluationRequestByName.model_json_schema(),
-        ),
-        Tool(
-            name="run_rag_evaluation_by_name",
-            description="Run a RAG evaluation with contexts using a RootSignals evaluator by name",
-            inputSchema=RAGEvaluationByNameRequest.model_json_schema(),
         ),
         Tool(
             name="run_coding_policy_adherence",
@@ -79,8 +67,6 @@ def get_request_model(tool_name: str) -> type | None:
         "run_evaluation_by_name": EvaluationRequestByName,
         "run_evaluation": EvaluationRequest,
         "run_judge": RunJudgeRequest,
-        "run_rag_evaluation_by_name": RAGEvaluationByNameRequest,
-        "run_rag_evaluation": RAGEvaluationRequest,
     }
 
     return mapping.get(tool_name)

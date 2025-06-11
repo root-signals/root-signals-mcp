@@ -254,16 +254,14 @@ class RootSignalsEvaluatorRepository(RootSignalsRepositoryBase):
                     objective = evaluator_data["objective"]
                     intent = objective.get("intent")
 
-                requires_contexts = evaluator_data["requires_contexts"]
-                requires_expected_output = evaluator_data["requires_expected_output"]
+                inputs = evaluator_data["inputs"]
 
                 evaluator = EvaluatorInfo(
                     id=id_value,
                     name=name_value,
                     created_at=created_at,
                     intent=intent,
-                    requires_contexts=bool(requires_contexts),
-                    requires_expected_output=bool(requires_expected_output),
+                    inputs=inputs,
                 )
                 evaluators.append(evaluator)
             except KeyError as e:

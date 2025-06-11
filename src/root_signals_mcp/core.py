@@ -27,8 +27,6 @@ from root_signals_mcp.schema import (
     JudgesListResponse,
     ListEvaluatorsRequest,
     ListJudgesRequest,
-    RAGEvaluationByNameRequest,
-    RAGEvaluationRequest,
     RunJudgeRequest,
     RunJudgeResponse,
     UnknownToolRequest,
@@ -58,9 +56,7 @@ class RootMCPServerCore:  # noqa: D101
         self._function_map: dict[str, _Handler] = {
             "list_evaluators": self._handle_list_evaluators,
             "run_evaluation": self._handle_run_evaluation,
-            "run_rag_evaluation": self._handle_run_rag_evaluation,
             "run_evaluation_by_name": self._handle_run_evaluation_by_name,
-            "run_rag_evaluation_by_name": self._handle_run_rag_evaluation_by_name,
             "run_coding_policy_adherence": self._handle_coding_style_evaluation,
             "list_judges": self._handle_list_judges,
             "run_judge": self._handle_run_judge,
@@ -137,29 +133,19 @@ class RootMCPServerCore:  # noqa: D101
         logger.debug("Handling run_evaluation_by_name for evaluator %s", params.evaluator_name)
         return await self.evaluator_service.run_evaluation_by_name(params)
 
-    async def _handle_run_rag_evaluation(self, params: RAGEvaluationRequest) -> EvaluationResponse:
-        logger.debug("Handling run_rag_evaluation for evaluator %s", params.evaluator_id)
-        return await self.evaluator_service.run_rag_evaluation(params)
-
-    async def _handle_run_rag_evaluation_by_name(
-        self, params: RAGEvaluationByNameRequest
-    ) -> EvaluationResponse:
-        logger.debug("Handling run_rag_evaluation_by_name for evaluator %s", params.evaluator_name)
-        return await self.evaluator_service.run_rag_evaluation_by_name(params)
-
     async def _handle_coding_style_evaluation(
         self, params: CodingPolicyAdherenceEvaluationRequest
     ) -> EvaluationResponse:
         logger.debug("Handling run_coding_policy_adherence request")
 
-        rag_request = RAGEvaluationRequest(
+        rag_request = EvaluationRequest(
             evaluator_id=settings.coding_policy_evaluator_id,
             request=settings.coding_policy_evaluator_request,
             response=params.code,
             contexts=params.policy_documents,
         )
 
-        return await self.evaluator_service.run_rag_evaluation(rag_request)
+        return await self.evaluator_service.run_evaluation(rag_request)
 
     async def _handle_list_judges(self, _params: ListJudgesRequest) -> JudgesListResponse:
         """Handle list_judges tool call."""

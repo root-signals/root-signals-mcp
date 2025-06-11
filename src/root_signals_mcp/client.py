@@ -120,7 +120,12 @@ class RootSignalsMCPClient:
         return result.get("evaluators", [])  # type: ignore
 
     async def run_evaluation(
-        self, evaluator_id: str, request: str, response: str
+        self,
+        evaluator_id: str,
+        request: str,
+        response: str,
+        contexts: list[str] | None = None,
+        expected_output: str | None = None,
     ) -> dict[str, Any]:
         """Run a standard evaluation using a RootSignals evaluator by ID.
 
@@ -128,49 +133,8 @@ class RootSignalsMCPClient:
             evaluator_id: ID of the evaluator to use
             request: The user request/query
             response: The model's response to evaluate
-
-        Returns:
-            Evaluation result with score and justification
-        """
-        arguments = {
-            "evaluator_id": evaluator_id,
-            "request": request,
-            "response": response,
-        }
-
-        return await self.call_tool("run_evaluation", arguments)
-
-    async def run_evaluation_by_name(
-        self, evaluator_name: str, request: str, response: str
-    ) -> dict[str, Any]:
-        """Run a standard evaluation using a RootSignals evaluator by name.
-
-        Args:
-            evaluator_name: Name of the evaluator to use
-            request: The user request/query
-            response: The model's response to evaluate
-
-        Returns:
-            Evaluation result with score and justification
-        """
-        arguments = {
-            "evaluator_name": evaluator_name,
-            "request": request,
-            "response": response,
-        }
-
-        return await self.call_tool("run_evaluation_by_name", arguments)
-
-    async def run_rag_evaluation(
-        self, evaluator_id: str, request: str, response: str, contexts: list[str]
-    ) -> dict[str, Any]:
-        """Run a RAG evaluation with contexts using a RootSignals evaluator by ID.
-
-        Args:
-            evaluator_id: ID of the evaluator to use
-            request: The user request/query
-            response: The model's response to evaluate
-            contexts: List of context passages used for generation
+            contexts: Optional list of contexts (policy files, examples, etc.) used for generation. Only used for evaluators that require contexts.
+            expected_output: Optional expected LLM response. Only used for evaluators that require expected output.
 
         Returns:
             Evaluation result with score and justification
@@ -180,9 +144,40 @@ class RootSignalsMCPClient:
             "request": request,
             "response": response,
             "contexts": contexts,
+            "expected_output": expected_output,
         }
 
-        return await self.call_tool("run_rag_evaluation", arguments)
+        return await self.call_tool("run_evaluation", arguments)
+
+    async def run_evaluation_by_name(
+        self,
+        evaluator_name: str,
+        request: str,
+        response: str,
+        contexts: list[str] | None = None,
+        expected_output: str | None = None,
+    ) -> dict[str, Any]:
+        """Run a standard evaluation using a RootSignals evaluator by name.
+
+        Args:
+            evaluator_name: Name of the evaluator to use
+            request: The user request/query
+            response: The model's response to evaluate
+            contexts: Optional list of contexts (policy files, examples, etc.) used for generation. Only used for evaluators that require contexts.
+            expected_output: Optional expected LLM response. Only used for evaluators that require expected output.
+
+        Returns:
+            Evaluation result with score and justification
+        """
+        arguments = {
+            "evaluator_name": evaluator_name,
+            "request": request,
+            "response": response,
+            "contexts": contexts,
+            "expected_output": expected_output,
+        }
+
+        return await self.call_tool("run_evaluation_by_name", arguments)
 
     async def run_rag_evaluation_by_name(
         self, evaluator_name: str, request: str, response: str, contexts: list[str]
@@ -205,7 +200,7 @@ class RootSignalsMCPClient:
             "contexts": contexts,
         }
 
-        return await self.call_tool("run_rag_evaluation_by_name", arguments)
+        return await self.call_tool("run_evaluation_by_name", arguments)
 
     async def run_coding_policy_adherence(
         self, policy_documents: list[str], code: str

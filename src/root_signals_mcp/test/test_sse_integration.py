@@ -13,8 +13,6 @@ from root_signals_mcp.schema import (
     EvaluationResponse,
     EvaluatorInfo,
     EvaluatorsListResponse,
-    RAGEvaluationByNameRequest,
-    RAGEvaluationRequest,
 )
 from root_signals_mcp.settings import settings
 
@@ -45,7 +43,6 @@ async def test_list_tools(compose_up_mcp_server: Any) -> None:
         expected_tools: set[str] = {
             "list_evaluators",
             "run_evaluation",
-            "run_rag_evaluation",
             "run_coding_policy_adherence",
             "list_judges",
             "run_judge",
@@ -103,7 +100,7 @@ async def test_run_evaluation(compose_up_mcp_server: Any) -> None:
 
         clarity_evaluator: dict[str, Any] | None = next(
             (e for e in evaluators if e.get("name", "") == "Clarity"),
-            next((e for e in evaluators if not e.get("requires_contexts", False)), None),
+            next((e for e in evaluators if not e.get("inputs", {}).get("contexts")), None),
         )
 
         if not clarity_evaluator:
@@ -143,7 +140,7 @@ async def test_run_rag_evaluation(compose_up_mcp_server: Any) -> None:
 
         logger.info(f"Using evaluator: {faithfulness_evaluator['name']}")
 
-        result: dict[str, Any] = await client.run_rag_evaluation(
+        result: dict[str, Any] = await client.run_evaluation(
             evaluator_id=faithfulness_evaluator["id"],
             request="What is the capital of France?",
             response="The capital of France is Paris, which is known as the City of Light.",
@@ -268,7 +265,7 @@ async def test_evaluator_service_integration__rag_evaluation_by_id(
         "Retrieved evaluator ID doesn't match requested ID"
     )
 
-    rag_request: RAGEvaluationRequest = RAGEvaluationRequest(
+    rag_request: EvaluationRequest = EvaluationRequest(
         evaluator_id=rag_evaluator.id,
         request="What is the capital of France?",
         response="The capital of France is Paris, which is known as the City of Light.",
@@ -278,7 +275,7 @@ async def test_evaluator_service_integration__rag_evaluation_by_id(
         ],
     )
 
-    rag_result: EvaluationResponse = await service.run_rag_evaluation(rag_request)
+    rag_result: EvaluationResponse = await service.run_evaluation(rag_request)
     assert hasattr(rag_result, "score"), "RAG evaluation response missing score field"
     assert isinstance(rag_result.score, float), "RAG evaluation score should be a float"
     assert 0 <= rag_result.score <= 1, "RAG evaluation score should be between 0 and 1"
@@ -308,7 +305,7 @@ async def test_evaluator_service_integration__rag_evaluation_by_name(
 
     logger.info(f"Using RAG evaluator by name: {rag_evaluator.name}")
 
-    rag_request: RAGEvaluationByNameRequest = RAGEvaluationByNameRequest(
+    rag_request: EvaluationRequestByName = EvaluationRequestByName(
         evaluator_name=rag_evaluator.name,
         request="What is the capital of France?",
         response="The capital of France is Paris, which is known as the City of Light.",
@@ -318,7 +315,7 @@ async def test_evaluator_service_integration__rag_evaluation_by_name(
         ],
     )
 
-    rag_result: EvaluationResponse = await service.run_rag_evaluation_by_name(rag_request)
+    rag_result: EvaluationResponse = await service.run_evaluation_by_name(rag_request)
     assert hasattr(rag_result, "score"), "RAG evaluation response missing score field"
     assert isinstance(rag_result.score, float), "RAG evaluation score should be a float"
     assert 0 <= rag_result.score <= 1, "RAG evaluation score should be between 0 and 1"

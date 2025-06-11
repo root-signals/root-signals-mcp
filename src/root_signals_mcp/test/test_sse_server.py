@@ -11,7 +11,7 @@ from root_signals_mcp.root_api_client import (
     ResponseValidationError,
     RootSignalsEvaluatorRepository,
 )
-from root_signals_mcp.schema import EvaluationRequest, RAGEvaluationRequest
+from root_signals_mcp.schema import EvaluationRequest
 from root_signals_mcp.settings import settings
 
 pytestmark = [
@@ -43,7 +43,7 @@ async def test_list_tools(mcp_server: Any) -> None:
 
     assert "list_evaluators" in tool_dict, "list_evaluators tool not found"
     assert "run_evaluation" in tool_dict, "run_evaluation tool not found"
-    assert "run_rag_evaluation" in tool_dict, "run_rag_evaluation tool not found"
+    assert "run_evaluation_by_name" in tool_dict, "run_evaluation_by_name tool not found"
     assert "run_coding_policy_adherence" in tool_dict, "run_coding_policy_adherence tool not found"
 
     for tool in tools:
@@ -191,7 +191,7 @@ async def test_call_tool_run_evaluation_by_name(mcp_server: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_call_tool_run_rag_evaluation(mcp_server: Any) -> None:
-    """Test calling the run_rag_evaluation tool."""
+    """Test calling the run_evaluation tool with contexts."""
     list_result = await mcp_server.call_tool("list_evaluators", {})
     evaluators_data = json.loads(list_result[0].text)
 
@@ -216,7 +216,7 @@ async def test_call_tool_run_rag_evaluation(mcp_server: Any) -> None:
         ],
     }
 
-    result = await mcp_server.call_tool("run_rag_evaluation", arguments)
+    result = await mcp_server.call_tool("run_evaluation", arguments)
 
     assert len(result) == 1, "Expected single result content"
     assert result[0].type == "text", "Expected text content"
@@ -230,7 +230,7 @@ async def test_call_tool_run_rag_evaluation(mcp_server: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_call_tool_run_rag_evaluation_by_name(mcp_server: Any) -> None:
-    """Test calling the run_rag_evaluation_by_name tool."""
+    """Test calling the run_evaluation_by_name tool with contexts."""
     list_result = await mcp_server.call_tool("list_evaluators", {})
     evaluators_data = json.loads(list_result[0].text)
 
@@ -255,7 +255,7 @@ async def test_call_tool_run_rag_evaluation_by_name(mcp_server: Any) -> None:
         ],
     }
 
-    result = await mcp_server.call_tool("run_rag_evaluation_by_name", arguments)
+    result = await mcp_server.call_tool("run_evaluation_by_name", arguments)
 
     assert len(result) == 1, "Expected single result content"
     assert result[0].type == "text", "Expected text content"
@@ -296,7 +296,7 @@ async def test_run_evaluation_validation_error(mcp_server: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_run_rag_evaluation_missing_context(mcp_server: Any) -> None:
-    """Test calling run_rag_evaluation with missing contexts."""
+    """Test calling run_evaluation with missing contexts."""
     list_result = await mcp_server.call_tool("list_evaluators", {})
     evaluators_data = json.loads(list_result[0].text)
 
@@ -320,7 +320,7 @@ async def test_run_rag_evaluation_missing_context(mcp_server: Any) -> None:
         "contexts": [],
     }
 
-    result = await mcp_server.call_tool("run_rag_evaluation", arguments)
+    result = await mcp_server.call_tool("run_evaluation", arguments)
     response_data = json.loads(result[0].text)
 
     if "error" in response_data:
@@ -430,17 +430,6 @@ async def test_sse_server_request_validation__detects_extra_field_errors() -> No
     assert request.evaluator_id == "test-id", "evaluator_id not set correctly"
     assert request.request == "Test request", "request not set correctly"
     assert request.response == "Test response", "response not set correctly"
-
-    # RAG request should likewise ignore extra fields
-    rag_request = RAGEvaluationRequest(
-        evaluator_id="test-id",
-        request="Test request",
-        response="Test response",
-        contexts=["Context 1", "Context 2"],
-        unknown_rag_field="ignored",
-    )
-
-    assert not hasattr(rag_request, "unknown_rag_field"), "Unexpected extra field present"
 
 
 @pytest.mark.asyncio
