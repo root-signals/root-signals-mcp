@@ -406,7 +406,6 @@ class RootSignalsJudgeRepository(RootSignalsRepositoryBase):
         """
         max_to_fetch = max_count if max_count is not None else settings.max_judges
         page_size = min(max_to_fetch, 40)
-        initial_url = (
         initial_url = f"/v1/judges?page_size={page_size}&show_global={settings.show_public_judges}"
         url_params = {"show_global": settings.show_public_judges}
 
